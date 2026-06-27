@@ -1,0 +1,46 @@
+# ============================================================
+# WEEKSPORT — .gitignore raíz
+# ============================================================
+
+# --- Node / Next.js (web/) ---
+web/node_modules/
+web/.next/
+web/out/
+web/build/
+web/.pnp
+web/.pnp.*
+
+# --- Variables de entorno (NUNCA subir al repo) ---
+.env
+.env.local
+.env.*.local
+web/.env
+web/.env.local
+web/.env.*.local
+
+# --- Logs ---
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# --- TypeScript ---
+web/*.tsbuildinfo
+web/next-env.d.ts
+
+# --- OS ---
+.DS_Store
+Thumbs.db
+*.pem
+
+# --- Editores ---
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# --- Vercel ---
+.vercel
+
+# --- Supabase (si usás CLI local en el futuro) ---
+.supabase/

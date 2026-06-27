@@ -1,0 +1,82 @@
+@import "tailwindcss";
+
+/* ============================================================
+   WEEKSPORT — Design System Base
+   Tokens de colores, fuentes y utilidades globales
+   ============================================================ */
+
+@theme inline {
+  /* Paleta principal */
+  --color-brand-primary:   #FF5C00;   /* Naranja vibrante — acción, CTA */
+  --color-brand-secondary: #1A1A2E;   /* Azul oscuro profundo — fondo principal */
+  --color-brand-accent:    #E94560;   /* Rosa/rojo — alertas, badges de stock */
+
+  /* Grises de UI */
+  --color-surface-100: #16213E;
+  --color-surface-200: #0F3460;
+  --color-surface-card: rgba(255, 255, 255, 0.05);
+
+  /* Texto */
+  --color-text-primary:   #F5F5F5;
+  --color-text-secondary: #A8A8B3;
+  --color-text-muted:     #6E6E80;
+
+  /* Fuentes */
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-display: 'Outfit', system-ui, sans-serif;
+}
+
+/* Reset y base */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  background-color: #1A1A2E;
+  color: #F5F5F5;
+  font-family: var(--font-sans);
+  line-height: 1.6;
+  min-height: 100vh;
+}
+
+/* Scrollbar personalizada */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #1A1A2E;
+}
+::-webkit-scrollbar-thumb {
+  background: #FF5C00;
+  border-radius: 3px;
+}
+
+/* Selección de texto */
+::selection {
+  background: rgba(255, 92, 0, 0.3);
+  color: #F5F5F5;
+}
+
+/* Transiciones globales suaves */
+a,
+button {
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+/* Focus ring accesible */
+:focus-visible {
+  outline: 2px solid #FF5C00;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
