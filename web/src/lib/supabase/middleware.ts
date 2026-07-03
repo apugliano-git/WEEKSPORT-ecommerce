@@ -47,7 +47,7 @@ export async function actualizarSesion(request: NextRequest) {
 
   // Regla de negocio: Si el usuario intenta acceder a una subruta bajo /admin
   // y no posee una sesión (JWT) activa ni está intentando iniciar sesión.
-  if (!user && pathname !== '/admin/login') {
+  if (!user && !pathname.startsWith('/admin/login')) {
     const loginUrl = request.nextUrl.clone()
     loginUrl.pathname = '/admin/login'
     

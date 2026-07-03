@@ -1,4 +1,4 @@
-import { CatalogClient } from "@/components/catalog/CatalogClient";
+import { ProductCard } from "@/components/catalog/ProductCard";
 import { supabase } from "@/lib/supabase";
 
 export const revalidate = 0; // Evitar caché estática para reflejar cambios en tiempo real
@@ -54,17 +54,21 @@ export default async function HomePage() {
       {/* Contenedor del Catálogo */}
       <section className="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-16">
         {productos.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-32 bg-[#1A1A20]/50 rounded-3xl border border-white/5 backdrop-blur-sm shadow-2xl">
-            <div className="w-20 h-20 bg-[#FF5C00]/10 rounded-full flex items-center justify-center mb-6 border border-[#FF5C00]/20">
-              <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#FF5C00" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.29 7 12 12 20.71 7"/><line x1="12" y1="22" x2="12" y2="12"/></svg>
+          <div className="flex flex-col items-center justify-center py-24 text-center">
+            <div className="w-16 h-16 bg-neutral-900 rounded-full flex items-center justify-center mb-6 border border-neutral-800">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#FF5C00" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 7h-3a2 2 0 0 1-2-2V2"/><path d="M9 18a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h7l4 4v10a2 2 0 0 1-2 2Z"/><path d="M3 15h6"/><path d="M3 18h6"/></svg>
             </div>
-            <h3 className="text-2xl font-bold font-display text-white mb-2">Próximamente</h3>
-            <p className="text-gray-400 text-center max-w-md leading-relaxed">
-              Estamos preparando la nueva colección. Nuestro catálogo de indumentaria deportiva estará disponible muy pronto.
+            <h3 className="text-xl font-medium text-white mb-2">Inventario en transición</h3>
+            <p className="text-neutral-400 max-w-sm mx-auto">
+              Estamos actualizando nuestro stock. Muy pronto descubrirás las nuevas prendas exclusivas para tu entrenamiento.
             </p>
           </div>
         ) : (
-          <CatalogClient productos={productos as any} categorias={categorias} />
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+            {productos.map((producto: any) => (
+              <ProductCard key={producto.id} producto={producto} />
+            ))}
+          </div>
         )}
       </section>
     </main>
