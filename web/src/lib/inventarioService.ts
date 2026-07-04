@@ -18,6 +18,7 @@ export interface NuevoArticuloPayload {
   precio: number;
   categoria_id: string; // O UUID/number según el schema de la BD
   variantes: NuevaVariante[];
+  imagenes?: string[];
 }
 
 /**
@@ -35,13 +36,11 @@ export async function actualizarStockVariante(id: string, nuevoStock: number): P
       .eq('id', id);
 
     if (error) {
-      console.error('[inventarioService] Error al actualizar stock:', error);
       return { status: 'error', message: error.message };
     }
 
     return { status: 'success', message: 'Stock actualizado con éxito.' };
   } catch (err: any) {
-    console.error('[inventarioService] Excepción:', err);
     return { status: 'error', message: 'Fallo de red o excepción interna.' };
   }
 }
@@ -58,13 +57,13 @@ export async function crearArticuloCompleto(payload: NuevoArticuloPayload): Prom
         nombre: payload.nombre,
         descripcion: payload.descripcion,
         precio: payload.precio,
-        categoria_id: payload.categoria_id
+        categoria_id: payload.categoria_id,
+        imagenes: payload.imagenes || []
       })
       .select('id')
       .single();
 
     if (errProd || !producto) {
-      console.error('[inventarioService] Error creando producto:', errProd);
       return { status: 'error', message: `Fallo al registrar el artículo: ${errProd?.message}` };
     }
 
@@ -85,7 +84,6 @@ export async function crearArticuloCompleto(payload: NuevoArticuloPayload): Prom
       .insert(variantesParaInsertar);
 
     if (errVar) {
-      console.error('[inventarioService] Error insertando variantes:', errVar);
       return { 
         status: 'error', 
         message: 'El artículo base fue creado, pero falló la inicialización física del stock y variantes.' 
@@ -94,7 +92,6 @@ export async function crearArticuloCompleto(payload: NuevoArticuloPayload): Prom
 
     return { status: 'success', message: 'Artículo completo y stock inicial registrados exitosamente en el sistema.' };
   } catch (err: any) {
-    console.error('[inventarioService] Excepción global:', err);
     return { status: 'error', message: 'Fallo de conexión crítico o error interno en el servidor.' };
   }
 }
@@ -115,13 +112,46 @@ export async function desactivarProducto(productoId: string): Promise<ApiRespons
       .eq('id', productoId);
 
     if (error) {
-      console.error('[inventarioService] Error desactivando producto:', error);
       return { status: 'error', message: `Base de datos rechazó la baja lógica: ${error.message}` };
     }
 
     return { status: 'success', message: 'Producto dado de baja lógica correctamente.' };
   } catch (err: any) {
-    console.error('[inventarioService] Excepción al desactivar:', err);
     return { status: 'error', message: 'Error interno al intentar dar de baja el artículo.' };
+  }
+}
+
+/**
+ * Sube una imagen binaria a Supabase Storage con límite de 5MB.
+ * Retorna la URL pública absoluta del bucket.
+ */
+export async function subirImagenProducto(file: File): Promise<{ url?: string; error?: string }> {
+  try {
+    // Validación perimetral 5MB
+    if (file.size > 5 * 1024 * 1024) {
+      return { error: 'El archivo excede el límite de 5 MB permitidos.' };
+    }
+
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${crypto.randomUUID()}-${Date.now()}.${fileExt}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from('productos-imagenes')
+      .upload(fileName, file, {
+        cacheControl: '3600',
+        upsert: false
+      });
+
+    if (uploadError) {
+      return { error: `Fallo al subir la imagen: ${uploadError.message}` };
+    }
+
+    const { data } = supabase.storage
+      .from('productos-imagenes')
+      .getPublicUrl(fileName);
+
+    return { url: data.publicUrl };
+  } catch (err: any) {
+    return { error: 'Excepción interna al procesar la subida de medios.' };
   }
 }

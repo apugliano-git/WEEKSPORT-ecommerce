@@ -1,12 +1,14 @@
-import React from 'react'
+import React from 'react';
 
-export interface SkeletonProps extends React.HTMLAttributes<HTMLDivElement> {}
+interface SkeletonProps extends React.HTMLAttributes<HTMLDivElement> {
+  className?: string;
+}
 
 export function Skeleton({ className = '', ...props }: SkeletonProps) {
   return (
     <div
-      className={`animate-pulse bg-neutral-800 rounded-md ${className}`}
+      className={`animate-pulse rounded-md bg-zinc-900/60 border border-zinc-800/50 ${className}`}
       {...props}
     />
-  )
+  );
 }

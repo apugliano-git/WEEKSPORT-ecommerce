@@ -38,8 +38,6 @@ export async function procesarVentaAtomicamente(items: VentaItem[]): Promise<Pro
 
     // 3. Control de Excepciones (Parseo de ERRCODE de PostgreSQL)
     if (error) {
-      console.error('[ventasService] DB Exception capturada:', error);
-      
       switch (error.code) {
         case 'P0001': // Stock insuficiente u otro RAISE custom
           return { 
@@ -90,7 +88,6 @@ export async function procesarVentaAtomicamente(items: VentaItem[]): Promise<Pro
     };
 
   } catch (err: any) {
-    console.error('[ventasService] Crash de infraestructura:', err);
     return {
       status: 'error',
       message: 'Fallo en la comunicación con el cliente de Supabase.',
