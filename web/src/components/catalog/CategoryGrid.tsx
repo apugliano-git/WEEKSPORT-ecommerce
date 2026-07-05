@@ -14,15 +14,15 @@ interface CategoryGridProps {
 }
 
 export function CategoryGrid({ categories, activeCategoryId, onSelectCategory }: CategoryGridProps) {
-  // We expect up to 7 categories. Let's define some gradients for them.
-  const gradients = [
-    'from-neutral-900 to-neutral-800',
-    'from-stone-900 to-stone-800',
-    'from-zinc-900 to-zinc-800',
-    'from-gray-900 to-gray-800',
-    'from-slate-900 to-slate-800',
-    'from-neutral-950 to-neutral-800',
-    'from-zinc-950 to-zinc-800'
+  // PLACEHOLDER: reemplazar por imágenes reales subidas por el admin
+  const placeholders = [
+    'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?q=80&w=1000&auto=format&fit=crop', // Remeras
+    'https://images.unsplash.com/photo-1620799140188-3b2a02fd9a77?q=80&w=1000&auto=format&fit=crop', // Tops
+    'https://images.unsplash.com/photo-1556821840-3a63f95609a7?q=80&w=1000&auto=format&fit=crop', // Joggins/Pants
+    'https://images.unsplash.com/photo-1591195853828-11db59a44f6b?q=80&w=1000&auto=format&fit=crop', // Shorts
+    'https://images.unsplash.com/photo-1506629082955-511b1aa562c8?q=80&w=1000&auto=format&fit=crop', // Calzas/Leggings
+    'https://images.unsplash.com/photo-1556821840-3a63f95609a7?q=80&w=1000&auto=format&fit=crop', // Buzos
+    'https://images.unsplash.com/photo-1618354691373-d851c5c3a990?q=80&w=1000&auto=format&fit=crop'  // Accesorios
   ]
 
   const handleCategoryClick = (id: string) => {
@@ -40,7 +40,7 @@ export function CategoryGrid({ categories, activeCategoryId, onSelectCategory }:
     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
       {categories.slice(0, 7).map((category, index) => {
         const isActive = activeCategoryId === category.id
-        const gradient = gradients[index % gradients.length]
+        const bgImage = placeholders[index % placeholders.length]
         
         return (
           <button
@@ -50,11 +50,14 @@ export function CategoryGrid({ categories, activeCategoryId, onSelectCategory }:
               isActive ? 'ring-2 ring-[#F400A1]' : 'hover:ring-2 hover:ring-[#F400A1]/50 hover:scale-[1.02]'
             }`}
           >
-            {/* Gradiente de fondo único por índice */}
-            <div className={`absolute inset-0 bg-gradient-to-br ${gradient}`} />
+            {/* Imagen de fondo */}
+            <div 
+              className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-110"
+              style={{ backgroundImage: `url(${bgImage})` }}
+            />
             
             {/* Overlay oscuro */}
-            <div className="absolute inset-0 bg-black/40 group-hover:bg-black/20 transition-colors" />
+            <div className="absolute inset-0 bg-black/60 group-hover:bg-black/40 transition-colors" />
             
             {/* Texto bottom-left */}
             <div className="absolute inset-0 p-4 flex items-end">

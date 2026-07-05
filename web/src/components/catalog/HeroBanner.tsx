@@ -12,20 +12,19 @@ export function HeroBanner({ imageUrl }: HeroBannerProps) {
   }
 
   return (
-    <section className="relative w-full h-[65vh] min-h-[480px] max-h-[720px] overflow-hidden bg-gradient-to-br from-[#1a0014] via-[#0F0F12] to-[#0a0a12] border-b border-white/5 flex items-end">
+    <section className="relative w-full h-[65vh] min-h-[480px] max-h-[720px] overflow-hidden bg-gradient-to-br from-[#1a0014] via-[#0F0F12] to-[#0a0a12] border-b border-white/5 flex flex-col justify-end">
       {/* Glow blob fucsia blur */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-[#F400A1]/10 blur-[120px] rounded-full pointer-events-none" />
       
-      {/* Background Image (if any) */}
-      {imageUrl && (
-        <div 
-          className="absolute inset-0 bg-cover bg-center"
-          style={{ backgroundImage: `url(${imageUrl})` }}
-        />
-      )}
+      {/* Background Image (if any) or Placeholder */}
+      <div 
+        className="absolute inset-0 bg-cover bg-center"
+        style={{ backgroundImage: `url(${imageUrl || 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?q=80&w=2070&auto=format&fit=crop'})` }}
+      />
+      {/* PLACEHOLDER: reemplazar por imagen real subida por el admin */}
 
       {/* Overlay */}
-      <div className="absolute inset-0 bg-gradient-to-t from-[#0F0F12]/90 via-[#0F0F12]/30 to-transparent pointer-events-none" />
+      <div className="absolute inset-0 bg-gradient-to-t from-[#0F0F12]/90 via-[#0F0F12]/60 to-transparent pointer-events-none" />
       
       <div className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12 sm:pb-16 text-left">
         <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-[#F400A1] text-[10px] font-bold tracking-widest uppercase mb-6 backdrop-blur-md">
