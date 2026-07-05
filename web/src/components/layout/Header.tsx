@@ -2,19 +2,29 @@
 
 import React from 'react'
 import { useCart } from '@/context/CartContext'
+import { SearchBar } from './SearchBar'
 
 export function Header() {
   const { totalItems, openDrawer } = useCart()
 
   return (
-    <header className="sticky top-0 z-40 w-full backdrop-blur-md bg-[#0F0F12]/80 border-b border-white/10">
+    <header className="sticky top-0 z-40 w-full backdrop-blur-md bg-[#0F0F12]/90 border-b border-white/5">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center gap-2">
+        
+        {/* Left: Logo */}
+        <div className="flex items-center gap-2 flex-none">
           <span className="text-2xl font-bold font-display tracking-tight">
             <span className="text-[#F400A1]">WEEK</span>SPORT
           </span>
         </div>
+
+        {/* Center: Search (Desktop) / Mobile Toggle handled inside SearchBar */}
+        <div className="flex flex-1 justify-end sm:justify-center px-4">
+          <SearchBar />
+        </div>
         
+        {/* Right: Cart */}
+        <div className="flex items-center flex-none">
         <button 
           onClick={openDrawer}
           className="relative p-2 text-white hover:text-[#F400A1] transition-colors focus:outline-none"
@@ -33,6 +43,7 @@ export function Header() {
             </span>
           )}
         </button>
+        </div>
       </div>
     </header>
   )
