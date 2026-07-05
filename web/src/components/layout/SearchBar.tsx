@@ -30,11 +30,13 @@ export function SearchBar() {
           </svg>
         </div>
         <input
+          id="search-productos-desktop"
+          name="search"
           type="text"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder="Buscar productos..."
-          className="w-full bg-[#1A1A20] text-white border border-white/10 rounded-full py-2 pl-10 pr-10 text-sm focus:outline-none focus:ring-1 focus:ring-[#F400A1] focus:border-[#F400A1] transition-all"
+          className="w-full bg-[#1A1A20] text-white border border-white/10 rounded-full py-2 pl-12 pr-10 text-sm focus:outline-none focus:ring-1 focus:ring-[#F400A1] focus:border-[#F400A1] transition-all"
         />
         {searchQuery && (
           <button 
@@ -61,12 +63,14 @@ export function SearchBar() {
               </svg>
             </div>
             <input
+              id="search-productos-mobile"
+              name="search"
               autoFocus
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Buscar productos..."
-              className="w-full bg-[#1A1A20] text-white border border-white/10 rounded-full py-2.5 pl-10 pr-10 text-sm focus:outline-none focus:ring-1 focus:ring-[#F400A1] focus:border-[#F400A1] transition-all"
+              className="w-full bg-[#1A1A20] text-white border border-white/10 rounded-full py-2.5 pl-12 pr-10 text-sm focus:outline-none focus:ring-1 focus:ring-[#F400A1] focus:border-[#F400A1] transition-all"
             />
             {searchQuery ? (
               <button 

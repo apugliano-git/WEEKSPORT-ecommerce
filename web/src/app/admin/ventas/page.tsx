@@ -94,6 +94,8 @@ export default function AdminVentasPage() {
           <div className="flex-1">
             <label className="block text-sm font-medium mb-1 text-gray-700">ID de Variante (UUID)</label>
             <input 
+              id="variante-id"
+              name="variante_id"
               type="text" 
               className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:outline-none"
               value={varianteIdInput}
@@ -104,6 +106,8 @@ export default function AdminVentasPage() {
           <div className="w-32">
             <label className="block text-sm font-medium mb-1 text-gray-700">Cantidad</label>
             <input 
+              id="cantidad"
+              name="cantidad"
               type="number" 
               min="1"
               className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:outline-none"
