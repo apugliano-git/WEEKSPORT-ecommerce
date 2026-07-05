@@ -1,5 +1,6 @@
 import { CartProvider } from "@/context/CartContext";
 import { Header } from "@/components/layout/Header";
+import { SearchProvider } from "@/context/SearchContext";
 import { CartDrawer } from "@/components/cart/CartDrawer";
 
 export default function StoreLayout({
@@ -8,10 +9,12 @@ export default function StoreLayout({
   children: React.ReactNode;
 }) {
   return (
-    <CartProvider>
-      <Header />
-      <CartDrawer />
-      {children}
-    </CartProvider>
+    <SearchProvider>
+      <CartProvider>
+        <Header />
+        <CartDrawer />
+        {children}
+      </CartProvider>
+    </SearchProvider>
   );
 }
