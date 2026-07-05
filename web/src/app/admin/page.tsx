@@ -57,7 +57,7 @@ export default async function AdminDashboardPage() {
         {/* Tarjetas de Métricas - Bordes ultra suavizados (rounded-2xl) */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="bg-zinc-900 p-6 rounded-2xl border border-zinc-800/50 flex flex-col shadow-lg shadow-black/50 relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 blur-3xl rounded-full" />
+            <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 blur-3xl rounded-full z-0 pointer-events-none" />
             <span className="text-zinc-500 text-xs font-bold uppercase tracking-wider mb-3">Productos Activos</span>
             <div className="flex items-center gap-4 relative z-10">
               <div className="p-3 bg-zinc-950 rounded-xl border border-zinc-800">
@@ -68,7 +68,7 @@ export default async function AdminDashboardPage() {
           </div>
           
           <div className="bg-zinc-900 p-6 rounded-2xl border border-zinc-800/50 flex flex-col shadow-lg shadow-black/50 relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-red-500/5 blur-3xl rounded-full" />
+            <div className="absolute top-0 right-0 w-32 h-32 bg-red-500/5 blur-3xl rounded-full z-0 pointer-events-none" />
             <span className="text-zinc-500 text-xs font-bold uppercase tracking-wider mb-3">Variantes Agotadas</span>
             <div className="flex items-center gap-4 relative z-10">
               <div className="p-3 bg-zinc-950 rounded-xl border border-zinc-800">
@@ -80,38 +80,40 @@ export default async function AdminDashboardPage() {
         </div>
 
         {/* Panel de Accesos Rápidos */}
-        <section className="bg-zinc-900 p-6 rounded-2xl border border-zinc-800/50 flex flex-col shadow-lg shadow-black/50">
-          <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+        <section className="flex flex-col gap-4">
+          <h2 className="text-xl font-bold text-white flex items-center gap-2 px-2">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[#FF5C00]"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
             Accesos Rápidos
           </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
             <Link 
               href="/admin/productos"
-              className="flex items-center gap-3 p-4 bg-zinc-950 rounded-xl border border-zinc-800 hover:border-zinc-700 hover:bg-zinc-800/50 transition-all text-white font-medium"
+              className="bg-zinc-900 p-6 rounded-2xl border border-zinc-800/50 shadow-lg shadow-black/50 flex items-center gap-4 hover:bg-zinc-800/50 hover:border-zinc-700 transition-all group"
             >
-              <div className="p-2 bg-zinc-900 rounded-lg text-zinc-400">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
+              <div className="p-3 bg-zinc-950 rounded-xl border border-zinc-800 group-hover:border-zinc-700 transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-400"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
               </div>
-              Ver Productos
+              <span className="text-lg font-bold text-white tracking-tight">Ver Productos</span>
             </Link>
+            
             <Link 
               href="/admin/inventario/nuevo"
-              className="flex items-center gap-3 p-4 bg-zinc-950 rounded-xl border border-zinc-800 hover:border-zinc-700 hover:bg-zinc-800/50 transition-all text-white font-medium"
+              className="bg-zinc-900 p-6 rounded-2xl border border-zinc-800/50 shadow-lg shadow-black/50 flex items-center gap-4 hover:bg-zinc-800/50 hover:border-zinc-700 transition-all group"
             >
-              <div className="p-2 bg-zinc-900 rounded-lg text-zinc-400">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+              <div className="p-3 bg-zinc-950 rounded-xl border border-zinc-800 group-hover:border-zinc-700 transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-400"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
               </div>
-              Nuevo Artículo
+              <span className="text-lg font-bold text-white tracking-tight">Nuevo Artículo</span>
             </Link>
+            
             <Link 
               href="/admin/ventas"
-              className="flex items-center gap-3 p-4 bg-zinc-950 rounded-xl border border-zinc-800 hover:border-zinc-700 hover:bg-zinc-800/50 transition-all text-white font-medium"
+              className="bg-zinc-900 p-6 rounded-2xl border border-zinc-800/50 shadow-lg shadow-black/50 flex items-center gap-4 hover:bg-zinc-800/50 hover:border-zinc-700 transition-all group"
             >
-              <div className="p-2 bg-zinc-900 rounded-lg text-zinc-400">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+              <div className="p-3 bg-zinc-950 rounded-xl border border-zinc-800 group-hover:border-zinc-700 transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-400"><path d="M20 6 9 17l-5-5"/></svg>
               </div>
-              Validar Ventas
+              <span className="text-lg font-bold text-white tracking-tight">Validar Ventas</span>
             </Link>
           </div>
         </section>
