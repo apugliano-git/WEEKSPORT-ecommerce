@@ -10,6 +10,7 @@ interface ProductTableProps {
 
 export function ProductTable({ productos, categorias }: ProductTableProps) {
   const [searchTerm, setSearchTerm] = useState('')
+  const [selectedCategoryId, setSelectedCategoryId] = useState('')
 
   // Mapear IDs de categorías a nombres para una visualización amigable
   const categoryMap = React.useMemo(() => {
@@ -23,6 +24,7 @@ export function ProductTable({ productos, categorias }: ProductTableProps) {
   const variantRows = React.useMemo(() => {
     const rows: {
       productoId: string;
+      categoriaId: string;
       nombre: string;
       categoria: string;
       activo: boolean;
@@ -38,6 +40,7 @@ export function ProductTable({ productos, categorias }: ProductTableProps) {
       variants.forEach(v => {
         rows.push({
           productoId: prod.id,
+          categoriaId: prod.categoria_id,
           nombre: prod.nombre,
           categoria: categoryMap[prod.categoria_id] || 'Sin categoría',
           activo: prod.activo,
@@ -53,17 +56,24 @@ export function ProductTable({ productos, categorias }: ProductTableProps) {
     return rows;
   }, [productos, categoryMap]);
 
-  // Filtrar las filas según la búsqueda del usuario
+  // Filtrar las filas según la búsqueda del usuario y la categoría seleccionada
   const filteredRows = React.useMemo(() => {
-    if (!searchTerm.trim()) return variantRows;
+    let result = variantRows;
+
+    if (selectedCategoryId) {
+      result = result.filter(row => row.categoriaId === selectedCategoryId);
+    }
+
+    if (!searchTerm.trim()) return result;
+    
     const term = searchTerm.toLowerCase();
-    return variantRows.filter(row => 
+    return result.filter(row => 
       row.nombre.toLowerCase().includes(term) ||
       row.categoria.toLowerCase().includes(term) ||
       row.talle.toLowerCase().includes(term) ||
       row.color.toLowerCase().includes(term)
     );
-  }, [variantRows, searchTerm]);
+  }, [variantRows, searchTerm, selectedCategoryId]);
 
   return (
     <div className="bg-[#1A1A20] rounded-2xl border border-white/5 overflow-hidden shadow-lg">
@@ -72,17 +82,29 @@ export function ProductTable({ productos, categorias }: ProductTableProps) {
           <h3 className="text-xl font-bold font-display text-white">Inventario de Variantes</h3>
           <p className="text-sm text-gray-400 mt-1">Lista detallada de las variantes de stock de tu tienda.</p>
         </div>
-        <div className="relative">
-          <input
-            type="text"
-            placeholder="Buscar por producto, talle o color..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full sm:w-80 bg-[#23232A] text-white placeholder-gray-500 border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#FF5C00] transition-shadow"
-          />
-          <span className="absolute right-3 top-3 text-gray-500">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-          </span>
+        <div className="flex flex-col sm:flex-row gap-3">
+          <select
+            value={selectedCategoryId}
+            onChange={(e) => setSelectedCategoryId(e.target.value)}
+            className="w-full sm:w-auto bg-[#23232A] text-white placeholder-gray-500 border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#FF5C00] transition-shadow cursor-pointer appearance-none"
+          >
+            <option value="">Todas las categorías</option>
+            {categorias.map(cat => (
+              <option key={cat.id} value={cat.id}>{cat.nombre}</option>
+            ))}
+          </select>
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Buscar por producto, talle o color..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full sm:w-80 bg-[#23232A] text-white placeholder-gray-500 border border-white/10 rounded-xl px-4 py-2.5 pl-10 text-sm focus:outline-none focus:ring-2 focus:ring-[#FF5C00] transition-shadow"
+            />
+            <span className="absolute left-3 top-3 text-gray-500">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+            </span>
+          </div>
         </div>
       </div>
 
