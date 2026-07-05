@@ -1,5 +1,5 @@
 // Ajustá el path a la instancia de tu cliente supabase si es necesario
-import { supabase } from '@/lib/supabaseClient'; 
+import { supabase } from '@/lib/supabase';
 
 // --- Interfaces de Tipado ---
 export interface VentaItem {

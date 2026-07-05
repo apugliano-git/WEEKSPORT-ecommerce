@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabaseClient';
+import { supabase } from '@/lib/supabase';
 
 export interface ApiResponse {
   status: 'success' | 'error';
@@ -6,16 +6,15 @@ export interface ApiResponse {
 }
 
 export interface NuevaVariante {
-  sku: string;
   talle: string;
   color: string;
-  stock: number;
+  cantidad: number;
+  precio: number;
 }
 
 export interface NuevoArticuloPayload {
   nombre: string;
   descripcion: string;
-  precio: number;
   categoria_id: string; // O UUID/number según el schema de la BD
   variantes: NuevaVariante[];
   imagenes?: string[];
@@ -32,7 +31,7 @@ export async function actualizarStockVariante(id: string, nuevoStock: number): P
 
     const { error } = await supabase
       .from('variantes_stock')
-      .update({ stock: nuevoStock })
+      .update({ cantidad: nuevoStock })
       .eq('id', id);
 
     if (error) {
@@ -56,7 +55,6 @@ export async function crearArticuloCompleto(payload: NuevoArticuloPayload): Prom
       .insert({
         nombre: payload.nombre,
         descripcion: payload.descripcion,
-        precio: payload.precio,
         categoria_id: payload.categoria_id,
         imagenes: payload.imagenes || []
       })
@@ -72,10 +70,10 @@ export async function crearArticuloCompleto(payload: NuevoArticuloPayload): Prom
     // 2. Preparar la estructura de datos relacional para variantes
     const variantesParaInsertar = payload.variantes.map(v => ({
       producto_id: productoId, // Foreign Key relacional
-      sku: v.sku || null,
       talle: v.talle,
       color: v.color,
-      stock: v.stock
+      cantidad: v.cantidad,
+      precio: v.precio
     }));
 
     // 3. Insertar todas las variantes en 'variantes_stock' (Batch Insert)

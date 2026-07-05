@@ -7,7 +7,6 @@ export default function NuevoArticuloPage() {
   // Estado base del producto
   const [nombre, setNombre] = useState('');
   const [descripcion, setDescripcion] = useState('');
-  const [precio, setPrecio] = useState<number | ''>('');
   const [categoriaId, setCategoriaId] = useState('');
   
   // RF-09: Manejo de Medios Físicos
@@ -18,27 +17,27 @@ export default function NuevoArticuloPage() {
   const [variantes, setVariantes] = useState<NuevaVariante[]>([]);
   
   // Estado volátil para el sub-formulario de variantes
-  const [vSku, setVSku] = useState('');
   const [vTalle, setVTalle] = useState('');
   const [vColor, setVColor] = useState('');
-  const [vStock, setVStock] = useState<number>(0);
+  const [vCantidad, setVCantidad] = useState<number>(0);
+  const [vPrecio, setVPrecio] = useState<number | ''>('');
 
   // Estados de interfaz y feedback
   const [isLoading, setIsLoading] = useState(false);
   const [mensaje, setMensaje] = useState<{ tipo: 'success' | 'error'; texto: string } | null>(null);
 
   const agregarVariante = () => {
-    if (!vTalle || !vColor || vStock < 0) {
-      setMensaje({ tipo: 'error', texto: 'Completá Talle, Color y un stock válido.' });
+    if (!vTalle || !vColor || vCantidad < 0 || !vPrecio || Number(vPrecio) <= 0) {
+      setMensaje({ tipo: 'error', texto: 'Completá Talle, Color, cantidad y un precio mayor a 0.' });
       return;
     }
     
-    setVariantes([...variantes, { sku: vSku, talle: vTalle, color: vColor, stock: vStock }]);
+    setVariantes([...variantes, { talle: vTalle, color: vColor, cantidad: vCantidad, precio: Number(vPrecio) }]);
     
-    setVSku('');
     setVTalle('');
     setVColor('');
-    setVStock(0);
+    setVCantidad(0);
+    setVPrecio('');
     setMensaje(null);
   };
 
@@ -55,8 +54,8 @@ export default function NuevoArticuloPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!nombre || !precio || !categoriaId) {
-      setMensaje({ tipo: 'error', texto: 'Completá los campos obligatorios del artículo (Nombre, Precio, Categoría).' });
+    if (!nombre || !categoriaId) {
+      setMensaje({ tipo: 'error', texto: 'Completá los campos obligatorios del artículo (Nombre, Categoría).' });
       return;
     }
 
@@ -89,7 +88,6 @@ export default function NuevoArticuloPage() {
     const payload = {
       nombre,
       descripcion,
-      precio: Number(precio),
       categoria_id: categoriaId,
       variantes,
       imagenes: urlsImagenes
@@ -101,7 +99,6 @@ export default function NuevoArticuloPage() {
       setMensaje({ tipo: 'success', texto: result.message });
       setNombre('');
       setDescripcion('');
-      setPrecio('');
       setCategoriaId('');
       setVariantes([]);
       setArchivosImagenes([]);
@@ -159,18 +156,6 @@ export default function NuevoArticuloPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-zinc-400 mb-1.5">Precio Unitario Base *</label>
-              <input 
-                type="number"
-                step="0.01" 
-                className="w-full p-3 bg-zinc-950 border border-zinc-800 rounded-xl focus:ring-1 focus:ring-[#FF5C00] focus:border-[#FF5C00] outline-none transition-colors"
-                value={precio}
-                onChange={(e) => setPrecio(Number(e.target.value))}
-                placeholder="0.00"
-              />
-            </div>
-
-            <div>
               <label className="block text-sm font-medium text-zinc-400 mb-1.5">Descripción</label>
               <textarea 
                 className="w-full p-3 bg-zinc-950 border border-zinc-800 rounded-xl focus:ring-1 focus:ring-[#FF5C00] focus:border-[#FF5C00] outline-none transition-colors resize-none"
@@ -213,10 +198,6 @@ export default function NuevoArticuloPage() {
           
           <div className="grid grid-cols-2 gap-4 mb-4">
             <div>
-              <label className="block text-xs font-medium text-zinc-500 mb-1">SKU (Opcional)</label>
-              <input type="text" className="w-full p-2.5 bg-zinc-950 border border-zinc-800 rounded-xl text-sm outline-none focus:border-zinc-600 transition-colors" value={vSku} onChange={e => setVSku(e.target.value)} placeholder="SKU-XXX" />
-            </div>
-            <div>
               <label className="block text-xs font-medium text-zinc-500 mb-1">Talle *</label>
               <input type="text" className="w-full p-2.5 bg-zinc-950 border border-zinc-800 rounded-xl text-sm outline-none focus:border-zinc-600 transition-colors" value={vTalle} onChange={e => setVTalle(e.target.value)} placeholder="Ej: 42, XL" />
             </div>
@@ -226,7 +207,11 @@ export default function NuevoArticuloPage() {
             </div>
             <div>
               <label className="block text-xs font-medium text-zinc-500 mb-1">Stock Inicial *</label>
-              <input type="number" min="0" className="w-full p-2.5 bg-zinc-950 border border-zinc-800 rounded-xl text-sm outline-none focus:border-zinc-600 transition-colors" value={vStock} onChange={e => setVStock(parseInt(e.target.value) || 0)} />
+              <input type="number" min="0" className="w-full p-2.5 bg-zinc-950 border border-zinc-800 rounded-xl text-sm outline-none focus:border-zinc-600 transition-colors" value={vCantidad} onChange={e => setVCantidad(parseInt(e.target.value) || 0)} />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-zinc-500 mb-1">Precio *</label>
+              <input type="number" step="0.01" className="w-full p-2.5 bg-zinc-950 border border-zinc-800 rounded-xl text-sm outline-none focus:border-zinc-600 transition-colors" value={vPrecio} onChange={e => setVPrecio(Number(e.target.value) || '')} placeholder="Ej: 35000" />
             </div>
           </div>
           
@@ -244,10 +229,10 @@ export default function NuevoArticuloPage() {
                   <li key={i} className="flex justify-between items-center bg-zinc-950 p-3 border border-zinc-800/50 rounded-xl text-sm shadow-inner">
                     <div>
                       <span className="font-bold text-zinc-200 mr-2">{v.talle} - {v.color}</span>
-                      {v.sku && <span className="text-zinc-500 text-xs mr-2 font-mono bg-zinc-900 px-2 py-0.5 border border-zinc-800 rounded-md">{v.sku}</span>}
                     </div>
                     <div className="flex items-center gap-3">
-                      <span className="bg-zinc-800 text-zinc-300 px-2 py-1 rounded-md font-mono font-bold text-xs">STOCK: {v.stock}</span>
+                      <span className="bg-zinc-800 text-zinc-300 px-2 py-1 rounded-md font-mono font-bold text-xs">PRECIO: ${v.precio}</span>
+                      <span className="bg-zinc-800 text-zinc-300 px-2 py-1 rounded-md font-mono font-bold text-xs">STOCK: {v.cantidad}</span>
                       <button type="button" onClick={() => quitarVariante(i)} className="text-red-500 hover:text-red-400 bg-red-500/10 hover:bg-red-500/20 rounded p-1 transition-colors">
                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
                       </button>
