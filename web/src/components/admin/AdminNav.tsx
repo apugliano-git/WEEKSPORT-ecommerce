@@ -70,7 +70,7 @@ export function AdminNav() {
         <div className="flex items-center justify-between h-16">
           {/* Brand */}
           <Link href="/admin" className="flex items-center gap-2.5 shrink-0">
-            <span className="text-[#FF5C00] font-black text-lg tracking-tight">WEEK</span>
+            <span className="text-[#F400A1] font-black text-lg tracking-tight">WEEK</span>
             <span className="text-white font-black text-lg tracking-tight">SPORT</span>
             <span className="ml-1 text-[10px] font-bold uppercase tracking-widest text-zinc-500 border border-zinc-700 px-1.5 py-0.5 rounded">
               Admin
@@ -87,11 +87,11 @@ export function AdminNav() {
                   href={link.href}
                   className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
                     active
-                      ? 'bg-[#FF5C00]/15 text-[#FF5C00] border border-[#FF5C00]/25'
+                      ? 'bg-[#F400A1]/15 text-[#F400A1] border border-[#F400A1]/25'
                       : 'text-zinc-400 hover:text-white hover:bg-zinc-800/70 border border-transparent'
                   }`}
                 >
-                  <span className={active ? 'text-[#FF5C00]' : 'text-zinc-500'}>{link.icon}</span>
+                  <span className={active ? 'text-[#F400A1]' : 'text-zinc-500'}>{link.icon}</span>
                   <span className="hidden sm:inline">{link.label}</span>
                 </Link>
               );

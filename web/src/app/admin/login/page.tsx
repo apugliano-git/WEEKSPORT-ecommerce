@@ -64,7 +64,7 @@ export default function LoginPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className="w-full bg-black text-white border border-neutral-800 rounded-lg px-4 py-3 focus:outline-none focus:border-[#FF5C00] focus:ring-1 focus:ring-[#FF5C00] transition-colors"
+              className="w-full bg-black text-white border border-neutral-800 rounded-lg px-4 py-3 focus:outline-none focus:border-[#F400A1] focus:ring-1 focus:ring-[#F400A1] transition-colors"
               placeholder="admin@weeksport.com"
             />
           </div>
@@ -76,7 +76,7 @@ export default function LoginPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              className="w-full bg-black text-white border border-neutral-800 rounded-lg px-4 py-3 focus:outline-none focus:border-[#FF5C00] focus:ring-1 focus:ring-[#FF5C00] transition-colors"
+              className="w-full bg-black text-white border border-neutral-800 rounded-lg px-4 py-3 focus:outline-none focus:border-[#F400A1] focus:ring-1 focus:ring-[#F400A1] transition-colors"
               placeholder="••••••••"
             />
           </div>
@@ -84,7 +84,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full mt-4 bg-[#FF5C00] hover:bg-orange-600 text-white font-semibold py-3 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full mt-4 bg-[#F400A1] hover:bg-[#D000A0] text-white font-semibold py-3 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? 'Verificando...' : 'Iniciar Sesión'}
           </button>

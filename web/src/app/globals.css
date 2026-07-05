@@ -7,7 +7,7 @@
 
 @theme inline {
   /* Paleta principal */
-  --color-brand-primary:   #FF5C00;   /* Naranja vibrante — acción, CTA */
+  --color-brand-primary:   #F400A1;   /* Fucsia — acción, CTA, brand */
   --color-brand-secondary: #1A1A2E;   /* Azul oscuro profundo — fondo principal */
   --color-brand-accent:    #E94560;   /* Rosa/rojo — alertas, badges de stock */
 
@@ -51,7 +51,7 @@ html {
   background: #1A1A2E;
 }
 ::-webkit-scrollbar-thumb {
-  background: #FF5C00;
+  background: #F400A1;
   border-radius: 3px;
 }
 
@@ -70,7 +70,7 @@ button {
 
 /* Focus ring accesible */
 :focus-visible {
-  outline: 2px solid #FF5C00;
+  outline: 2px solid #F400A1;
   outline-offset: 2px;
   border-radius: 4px;
 }

@@ -27,11 +27,11 @@ export default async function AdminDashboardPage() {
   return (
     <div className="space-y-10">
         
-        {/* Header - Acentos tipográficos vibrantes text-[#FF5C00] */}
+        {/* Header - Acentos tipográficos vibrantes text-[#F400A1] */}
         <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold text-white tracking-tight flex items-center gap-3">
-              <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[#FF5C00]"><rect width="20" height="14" x="2" y="7" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+              <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[#F400A1]"><rect width="20" height="14" x="2" y="7" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
               Dashboard Administrativo
             </h1>
             <p className="text-zinc-400 mt-2 text-sm">Panel de control de inventario y estado general de la tienda.</p>
@@ -39,7 +39,7 @@ export default async function AdminDashboardPage() {
           <div className="flex items-center gap-3">
             <Link 
               href="/admin/inventario/nuevo"
-              className="inline-flex items-center justify-center gap-2 bg-[#FF5C00] hover:bg-orange-600 shadow-lg shadow-[#FF5C00]/20 text-white font-semibold py-2.5 px-5 rounded-xl transition-colors text-sm"
+              className="inline-flex items-center justify-center gap-2 bg-[#F400A1] hover:bg-[#D000A0] shadow-lg shadow-[#F400A1]/20 text-white font-semibold py-2.5 px-5 rounded-xl transition-colors text-sm"
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
               Nuevo Artículo
@@ -82,7 +82,7 @@ export default async function AdminDashboardPage() {
         {/* Panel de Accesos Rápidos */}
         <section className="flex flex-col gap-4">
           <h2 className="text-xl font-bold text-white flex items-center gap-2 px-2">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[#FF5C00]"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[#F400A1]"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
             Accesos Rápidos
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">

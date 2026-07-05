@@ -128,7 +128,7 @@ export default function NuevoArticuloPage() {
         {/* Datos Principales y Multimedia */}
         <div className="bg-zinc-900 p-6 rounded-2xl border border-zinc-800/50 shadow-lg shadow-black/50">
           <h2 className="text-xl font-semibold mb-6 border-b border-zinc-800/50 pb-3 flex items-center gap-2">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[#FF5C00]"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[#F400A1]"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
             Estructura Base
           </h2>
           
@@ -137,7 +137,7 @@ export default function NuevoArticuloPage() {
               <label className="block text-sm font-medium text-zinc-400 mb-1.5">Nombre del Artículo *</label>
               <input 
                 type="text" 
-                className="w-full p-3 bg-zinc-950 border border-zinc-800 rounded-xl focus:ring-1 focus:ring-[#FF5C00] focus:border-[#FF5C00] outline-none transition-colors"
+                className="w-full p-3 bg-zinc-950 border border-zinc-800 rounded-xl focus:ring-1 focus:ring-[#F400A1] focus:border-[#F400A1] outline-none transition-colors"
                 value={nombre}
                 onChange={(e) => setNombre(e.target.value)}
                 placeholder="Ej: Botines Tiempo Legend"
@@ -148,7 +148,7 @@ export default function NuevoArticuloPage() {
               <label className="block text-sm font-medium text-zinc-400 mb-1.5">Categoría ID (UUID) *</label>
               <input 
                 type="text" 
-                className="w-full p-3 bg-zinc-950 border border-zinc-800 rounded-xl focus:ring-1 focus:ring-[#FF5C00] focus:border-[#FF5C00] outline-none transition-colors"
+                className="w-full p-3 bg-zinc-950 border border-zinc-800 rounded-xl focus:ring-1 focus:ring-[#F400A1] focus:border-[#F400A1] outline-none transition-colors"
                 value={categoriaId}
                 onChange={(e) => setCategoriaId(e.target.value)}
                 placeholder="ID relacional"
@@ -158,7 +158,7 @@ export default function NuevoArticuloPage() {
             <div>
               <label className="block text-sm font-medium text-zinc-400 mb-1.5">Descripción</label>
               <textarea 
-                className="w-full p-3 bg-zinc-950 border border-zinc-800 rounded-xl focus:ring-1 focus:ring-[#FF5C00] focus:border-[#FF5C00] outline-none transition-colors resize-none"
+                className="w-full p-3 bg-zinc-950 border border-zinc-800 rounded-xl focus:ring-1 focus:ring-[#F400A1] focus:border-[#F400A1] outline-none transition-colors resize-none"
                 rows={3}
                 value={descripcion}
                 onChange={(e) => setDescripcion(e.target.value)}
@@ -168,7 +168,7 @@ export default function NuevoArticuloPage() {
 
             {/* File Input RF-09 */}
             <div className={`p-4 border rounded-xl transition-all ${
-              isUploading ? 'bg-zinc-800/30 border-[#FF5C00]/50 animate-pulse' : 'bg-zinc-950 border-zinc-800'
+              isUploading ? 'bg-zinc-800/30 border-[#F400A1]/50 animate-pulse' : 'bg-zinc-950 border-zinc-800'
             }`}>
               <label className="block text-sm font-medium text-zinc-400 mb-2 flex items-center gap-2">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
@@ -192,7 +192,7 @@ export default function NuevoArticuloPage() {
         {/* Lote de Variantes */}
         <div className="bg-zinc-900 p-6 rounded-2xl border border-zinc-800/50 shadow-lg shadow-black/50 flex flex-col">
           <h2 className="text-xl font-semibold mb-6 border-b border-zinc-800/50 pb-3 flex items-center gap-2">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[#FF5C00]"><path d="M20 7h-9"/><path d="M14 17H5"/><circle cx="17" cy="17" r="3"/><circle cx="7" cy="7" r="3"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[#F400A1]"><path d="M20 7h-9"/><path d="M14 17H5"/><circle cx="17" cy="17" r="3"/><circle cx="7" cy="7" r="3"/></svg>
             Configuración Física
           </h2>
           
@@ -252,7 +252,7 @@ export default function NuevoArticuloPage() {
             className={`px-8 py-3.5 rounded-xl text-white font-bold text-sm transition-all flex items-center gap-2 ${
               isLoading 
                 ? 'bg-zinc-800 text-zinc-500 cursor-not-allowed' 
-                : 'bg-[#FF5C00] hover:bg-orange-600 shadow-lg shadow-[#FF5C00]/20'
+                : 'bg-[#F400A1] hover:bg-[#D000A0] shadow-lg shadow-[#F400A1]/20'
             }`}
           >
             {isLoading ? (

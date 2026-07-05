@@ -11,13 +11,13 @@ export function Header() {
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         <div className="flex items-center gap-2">
           <span className="text-2xl font-bold font-display tracking-tight">
-            <span className="text-[#FF5C00]">WEEK</span>SPORT
+            <span className="text-[#F400A1]">WEEK</span>SPORT
           </span>
         </div>
         
         <button 
           onClick={openDrawer}
-          className="relative p-2 text-white hover:text-[#FF5C00] transition-colors focus:outline-none"
+          className="relative p-2 text-white hover:text-[#F400A1] transition-colors focus:outline-none"
           aria-label="Abrir carrito"
         >
           {/* Shopping Cart Icon */}
@@ -28,7 +28,7 @@ export function Header() {
           </svg>
           
           {totalItems > 0 && (
-            <span className="absolute top-0 right-0 inline-flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-[#FF5C00] rounded-full transform translate-x-1 -translate-y-1">
+            <span className="absolute top-0 right-0 inline-flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-[#F400A1] rounded-full transform translate-x-1 -translate-y-1">
               {totalItems}
             </span>
           )}

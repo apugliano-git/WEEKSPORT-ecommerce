@@ -64,7 +64,7 @@ function StockRow({ row }: { row: any }) {
           min="0"
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value !== '' ? parseInt(e.target.value) || 0 : '')}
-          className="w-20 bg-[#23232A] text-white text-center border border-white/10 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#FF5C00] transition-shadow"
+          className="w-20 bg-[#23232A] text-white text-center border border-white/10 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#F400A1] transition-shadow"
         />
       </td>
       <td className="px-6 py-4 text-center relative">
@@ -79,7 +79,7 @@ function StockRow({ row }: { row: any }) {
               disabled={!canSave}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
                 canSave 
-                  ? 'bg-[#FF5C00] text-white hover:bg-orange-600 shadow-lg shadow-[#FF5C00]/20 cursor-pointer' 
+                  ? 'bg-[#F400A1] text-white hover:bg-[#D000A0] shadow-lg shadow-[#F400A1]/20 cursor-pointer' 
                   : 'bg-zinc-800 text-zinc-500 cursor-not-allowed opacity-50'
               }`}
             >
@@ -165,7 +165,7 @@ export function StockManager({ productos, categorias }: StockManagerProps) {
           <select
             value={selectedCategoryId}
             onChange={(e) => setSelectedCategoryId(e.target.value)}
-            className="w-full sm:w-auto bg-[#23232A] text-white placeholder-gray-500 border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#FF5C00] transition-shadow cursor-pointer appearance-none"
+            className="w-full sm:w-auto bg-[#23232A] text-white placeholder-gray-500 border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#F400A1] transition-shadow cursor-pointer appearance-none"
           >
             <option value="">Todas las categorías</option>
             {categorias.map(cat => (
@@ -178,7 +178,7 @@ export function StockManager({ productos, categorias }: StockManagerProps) {
               placeholder="Buscar por producto, talle o color..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full sm:w-80 bg-[#23232A] text-white placeholder-gray-500 border border-white/10 rounded-xl px-4 py-2.5 pl-10 text-sm focus:outline-none focus:ring-2 focus:ring-[#FF5C00] transition-shadow"
+              className="w-full sm:w-80 bg-[#23232A] text-white placeholder-gray-500 border border-white/10 rounded-xl px-4 py-2.5 pl-10 text-sm focus:outline-none focus:ring-2 focus:ring-[#F400A1] transition-shadow"
             />
             <span className="absolute left-3 top-3 text-gray-500">
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>

@@ -15,7 +15,7 @@ export function CategoryFilter({ categories, activeCategoryId, onSelectCategory 
         onClick={() => onSelectCategory(null)}
         className={`whitespace-nowrap px-5 py-2 rounded-full text-sm font-bold transition-all ${
           activeCategoryId === null 
-            ? 'bg-[#FF5C00] text-white shadow-[0_0_15px_rgba(255,92,0,0.3)]' 
+            ? 'bg-[#F400A1] text-white shadow-[0_0_15px_rgba(244,0,161,0.3)]' 
             : 'bg-[#23232A] text-gray-400 hover:text-white border border-white/5 hover:border-white/20'
         }`}
       >
@@ -27,7 +27,7 @@ export function CategoryFilter({ categories, activeCategoryId, onSelectCategory 
           onClick={() => onSelectCategory(cat.id)}
           className={`whitespace-nowrap px-5 py-2 rounded-full text-sm font-bold transition-all ${
             activeCategoryId === cat.id 
-              ? 'bg-[#FF5C00] text-white shadow-[0_0_15px_rgba(255,92,0,0.3)]' 
+              ? 'bg-[#F400A1] text-white shadow-[0_0_15px_rgba(244,0,161,0.3)]' 
               : 'bg-[#23232A] text-gray-400 hover:text-white border border-white/5 hover:border-white/20'
           }`}
         >

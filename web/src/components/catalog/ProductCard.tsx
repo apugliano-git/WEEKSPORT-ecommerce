@@ -60,7 +60,7 @@ export function ProductCard({ producto }: ProductCardProps) {
 
       {/* Contenido */}
       <div className="p-6 flex flex-col flex-1">
-        <h3 className="text-xl font-bold font-display text-white line-clamp-1 group-hover:text-[#FF5C00] transition-colors">{producto.nombre}</h3>
+        <h3 className="text-xl font-bold font-display text-white line-clamp-1 group-hover:text-[#F400A1] transition-colors">{producto.nombre}</h3>
         <p className="text-sm text-gray-400 mt-2 line-clamp-2 min-h-[40px] leading-relaxed font-light">{producto.descripcion}</p>
 
         {/* Selección de Variantes */}
@@ -102,7 +102,7 @@ export function ProductCard({ producto }: ProductCardProps) {
                     onClick={() => setSelectedColor(color)}
                     className={`px-4 py-2 rounded-full text-xs font-medium transition-all duration-300 ${
                       selectedColor === color 
-                        ? 'bg-[#FF5C00] text-white shadow-[0_0_15px_rgba(255,92,0,0.3)] border border-[#FF5C00]' 
+                        ? 'bg-[#F400A1] text-white shadow-[0_0_15px_rgba(244,0,161,0.3)] border border-[#F400A1]' 
                         : isAvailable
                           ? 'bg-[#23232A] text-gray-300 border border-white/5 hover:border-white/20 hover:text-white'
                           : 'bg-[#15151A] text-gray-600 border border-transparent opacity-40 cursor-not-allowed'
