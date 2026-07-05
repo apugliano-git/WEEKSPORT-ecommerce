@@ -26,7 +26,7 @@ export function HeroBanner({ imageUrl }: HeroBannerProps) {
       {/* Overlay */}
       <div className="absolute inset-0 bg-gradient-to-t from-[#0F0F12]/90 via-[#0F0F12]/60 to-transparent pointer-events-none" />
       
-      <div className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12 sm:pb-16 text-left">
+      <div className="relative z-10 w-full max-w-7xl mx-auto self-center px-4 sm:px-6 lg:px-8 pb-12 sm:pb-16 text-left">
         <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-[#F400A1] text-[10px] font-bold tracking-widest uppercase mb-6 backdrop-blur-md">
           <span className="w-2 h-2 rounded-full bg-[#F400A1] animate-pulse" />
           Nueva Colección

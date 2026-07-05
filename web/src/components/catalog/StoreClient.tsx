@@ -18,7 +18,7 @@ export function StoreClient({ productos, categorias }: StoreClientProps) {
     <>
       <HeroBanner />
       
-      <section className="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-16 bg-[#0F0F12]">
+      <section className="max-w-7xl w-full mx-auto self-center px-4 sm:px-6 lg:px-8 py-16 bg-[#0F0F12]">
         <div className="mb-16">
           <CategoryGrid 
             categories={categorias}
