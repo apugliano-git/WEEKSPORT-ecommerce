@@ -53,8 +53,7 @@ export default async function AdminDashboardPage() {
   });
 
   return (
-    <main className="min-h-screen bg-zinc-950 px-4 py-8 sm:px-6 lg:px-8 font-sans">
-      <div className="max-w-7xl mx-auto space-y-10">
+    <div className="space-y-10">
         
         {/* Header - Acentos tipográficos vibrantes text-[#FF5C00] */}
         <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -179,7 +178,6 @@ export default async function AdminDashboardPage() {
             </table>
           </div>
         </section>
-      </div>
-    </main>
+    </div>
   )
 }
