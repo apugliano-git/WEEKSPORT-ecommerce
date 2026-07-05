@@ -8,8 +8,6 @@ export function CartDrawer() {
   const { cart, isDrawerOpen, closeDrawer, removeItem, updateQuantity, totalPrice } = useCart()
   const [nombre, setNombre] = useState('')
 
-  if (!isDrawerOpen) return null;
-
   const handleCheckout = (e: React.FormEvent) => {
     e.preventDefault()
     if (!nombre.trim()) return
@@ -20,13 +18,13 @@ export function CartDrawer() {
     <>
       {/* Backdrop */}
       <div 
-        className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm transition-opacity" 
+        className={`fixed inset-0 z-50 bg-black/60 backdrop-blur-sm transition-opacity duration-300 ${isDrawerOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
         onClick={closeDrawer}
         aria-hidden="true"
       />
       
       {/* Drawer */}
-      <div className="fixed inset-y-0 right-0 z-50 w-full max-w-md flex flex-col bg-[#1A1A20] shadow-2xl border-l border-white/10 transform transition-transform duration-300 ease-in-out">
+      <div className={`fixed inset-y-0 right-0 z-50 w-full sm:w-[420px] flex flex-col bg-[#1A1A20] shadow-2xl border-l border-white/10 transform transition-transform duration-300 ease-in-out ${isDrawerOpen ? 'translate-x-0' : 'translate-x-full'}`}>
         
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-white/10">

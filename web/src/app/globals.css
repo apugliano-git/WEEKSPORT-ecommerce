@@ -41,13 +41,7 @@ html {
   -moz-osx-font-smoothing: grayscale;
 }
 
-body {
-  background-color: #1A1A2E;
-  color: #F5F5F5;
-  font-family: var(--font-sans);
-  line-height: 1.6;
-  min-height: 100vh;
-}
+
 
 /* Scrollbar personalizada */
 ::-webkit-scrollbar {

@@ -29,7 +29,7 @@ export default async function HomePage() {
   return (
     <main className="flex-1 w-full flex flex-col">
       {/* Hero Section Premium */}
-      <section className="relative w-full overflow-hidden bg-[#0A0A0C] border-b border-white/5 pt-20 pb-24 sm:pt-32 sm:pb-36 flex items-center justify-center">
+      <section className="relative w-full overflow-hidden bg-[#0F0F12] border-b border-white/5 pt-20 pb-24 sm:pt-32 sm:pb-36 flex items-center justify-center">
         {/* Glow Effects */}
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-[#FF5C00]/10 blur-[120px] rounded-full pointer-events-none" />
         <div className="absolute top-0 left-1/4 w-[300px] h-[300px] bg-white/5 blur-[100px] rounded-full pointer-events-none" />
@@ -52,7 +52,7 @@ export default async function HomePage() {
       </section>
 
       {/* Contenedor del Catálogo */}
-      <section className="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-16">
+      <section className="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-16 bg-[#0F0F12]">
         {productos.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-24 text-center">
             <div className="w-16 h-16 bg-neutral-900 rounded-full flex items-center justify-center mb-6 border border-neutral-800">
