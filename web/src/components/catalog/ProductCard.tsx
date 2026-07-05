@@ -16,9 +16,12 @@ export function ProductCard({ producto }: ProductCardProps) {
   const talles = Array.from(new Set(variantes.map(v => v.talle)))
   const colores = Array.from(new Set(variantes.map(v => v.color)))
 
+  // Seleccionar por defecto la primera variante que tenga stock real (si existe)
+  const varianteInicial = variantes.find(v => v.cantidad > 0) || variantes[0];
+
   // Estado local para la selección del usuario
-  const [selectedTalle, setSelectedTalle] = useState<string>(talles[0] || '')
-  const [selectedColor, setSelectedColor] = useState<string>(colores[0] || '')
+  const [selectedTalle, setSelectedTalle] = useState<string>(varianteInicial?.talle || '')
+  const [selectedColor, setSelectedColor] = useState<string>(varianteInicial?.color || '')
 
   // Encontrar la variante exacta que coincida con la selección actual
   const selectedVariante = variantes.find(v => v.talle === selectedTalle && v.color === selectedColor)

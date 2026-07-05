@@ -65,13 +65,22 @@ export default async function AdminDashboardPage() {
             </h1>
             <p className="text-zinc-400 mt-2 text-sm">Panel de control de inventario y estado general de la tienda.</p>
           </div>
-          <Link 
-            href="/"
-            className="inline-flex items-center justify-center gap-2 bg-zinc-900 hover:bg-zinc-800 text-white font-semibold py-2.5 px-5 rounded-xl border border-zinc-800 transition-colors text-sm"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
-            Volver al Catálogo
-          </Link>
+          <div className="flex items-center gap-3">
+            <Link 
+              href="/admin/inventario/nuevo"
+              className="inline-flex items-center justify-center gap-2 bg-[#FF5C00] hover:bg-orange-600 shadow-lg shadow-[#FF5C00]/20 text-white font-semibold py-2.5 px-5 rounded-xl transition-colors text-sm"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+              Nuevo Artículo
+            </Link>
+            <Link 
+              href="/"
+              className="inline-flex items-center justify-center gap-2 bg-zinc-900 hover:bg-zinc-800 text-white font-semibold py-2.5 px-5 rounded-xl border border-zinc-800 transition-colors text-sm"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+              Catálogo
+            </Link>
+          </div>
         </header>
 
         {/* Tarjetas de Métricas - Bordes ultra suavizados (rounded-2xl) */}

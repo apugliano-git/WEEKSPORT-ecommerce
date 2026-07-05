@@ -1,4 +1,4 @@
-import { ProductCard } from "@/components/catalog/ProductCard";
+import { CatalogClient } from "@/components/catalog/CatalogClient";
 import { supabase } from "@/lib/supabase";
 
 export const revalidate = 0; // Evitar caché estática para reflejar cambios en tiempo real
@@ -64,11 +64,7 @@ export default async function HomePage() {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-            {productos.map((producto: any) => (
-              <ProductCard key={producto.id} producto={producto} />
-            ))}
-          </div>
+          <CatalogClient productos={productos} categorias={categorias} />
         )}
       </section>
     </main>
