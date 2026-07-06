@@ -2,7 +2,7 @@ import { CartItem } from '@/types'
 
 export const procesarCheckoutWhatsApp = (nombreCliente: string, cart: CartItem[]) => {
   // NOTA: Reemplazar con el número real de WhatsApp de la tienda. Debe contener solo números (sin '+', '-' ni letras) para evitar errores 404 de resolución de WhatsApp.
-  const TELEFONO = "5491122334455"; 
+  const TELEFONO = "5491167490961"; 
   
   let mensaje = `¡Hola!, mi nombre es ${nombreCliente.trim()} y estoy interesado/a en estos productos:\n\n`;
   
