@@ -197,7 +197,7 @@ export default function NuevoArticuloPage() {
               >
                 <option value="estandar">Estándar (S, M, L, XL, XXL)</option>
                 <option value="unico">Único (Talle Único)</option>
-                <option value="tops">Tops (niñas) (8, 10, 12, 14)</option>
+                <option value="tops">Tops (85/90 a 120+)</option>
                 <option value="sin_talle">Sin talle (Accesorios)</option>
               </select>
               <p className="text-xs text-zinc-500 mt-2">
