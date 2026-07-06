@@ -78,11 +78,13 @@ export function Footer() {
           </div>
 
         </div>
-        
-        {/* Aviso Legal */}
-        <div className="mt-16 pt-8 border-t border-white/5 text-center">
-          <p className="font-sans text-[11px] md:text-xs text-gray-500 uppercase tracking-widest max-w-3xl mx-auto leading-relaxed">
+        {/* Aviso Legal y Copyright */}
+        <div className="mt-16 pt-6 border-t border-white/5 text-center flex flex-col gap-2">
+          <p className="font-sans text-[10px] text-gray-600 max-w-2xl mx-auto leading-relaxed">
             La presente página es solo a título informativo. Para formalizar la compra usted será redirigido al contacto del vendedor una vez seleccionados los productos.
+          </p>
+          <p className="font-sans text-[10px] text-gray-600">
+            &copy; 2026. Todos los derechos reservados.
           </p>
         </div>
       </div>
