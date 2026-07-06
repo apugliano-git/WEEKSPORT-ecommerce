@@ -14,14 +14,22 @@ export function Header() {
       <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 md:h-32 flex items-center justify-between gap-4">
         
         {/* Zona 1: Logo */}
-        <div className="flex items-center shrink-0 h-full">
-          <Link href="/" className="flex items-center h-full shrink-0">
+        <div className="flex items-center shrink-0 h-full py-2">
+          <Link href="/" className="flex items-center h-full shrink-0 gap-3">
             <Image 
-              src="/logo.jpg" 
-              alt="WEEKSPORT" 
+              src="/logo1.png" 
+              alt="Logo Icon" 
+              width={60} 
+              height={60} 
+              className="h-full w-auto object-contain" 
+              priority 
+            />
+            <Image 
+              src="/logo2.png" 
+              alt="WEEKSPORT Text" 
               width={140} 
-              height={40} 
-              className="h-full w-auto" 
+              height={60} 
+              className="h-full w-auto object-contain" 
               priority 
             />
           </Link>
