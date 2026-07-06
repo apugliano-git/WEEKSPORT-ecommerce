@@ -1,49 +1,26 @@
 'use client';
 
 import { useState } from 'react';
-import { crearArticuloCompleto, NuevaVariante, subirImagenProducto } from '@/lib/inventarioService';
+import { crearArticuloCompleto, subirImagenProducto } from '@/lib/inventarioService';
 
 export default function NuevoArticuloPage() {
   // Estado base del producto
   const [nombre, setNombre] = useState('');
   const [descripcion, setDescripcion] = useState('');
   const [categoriaId, setCategoriaId] = useState('');
+  const [genero, setGenero] = useState('Unisex');
   
   // RF-09: Manejo de Medios Físicos
   const [archivosImagenes, setArchivosImagenes] = useState<File[]>([]);
   const [isUploading, setIsUploading] = useState(false);
 
-  // Array de variantes a crear
-  const [variantes, setVariantes] = useState<NuevaVariante[]>([]);
-  
-  // Estado volátil para el sub-formulario de variantes
-  const [vTalle, setVTalle] = useState('');
-  const [vColor, setVColor] = useState('');
-  const [vCantidad, setVCantidad] = useState<number>(0);
-  const [vPrecio, setVPrecio] = useState<number | ''>('');
+  // Estados del nuevo flujo de stock
+  const [tipoTalle, setTipoTalle] = useState('estandar');
+  const [precioInicial, setPrecioInicial] = useState<number | ''>('');
 
   // Estados de interfaz y feedback
   const [isLoading, setIsLoading] = useState(false);
   const [mensaje, setMensaje] = useState<{ tipo: 'success' | 'error'; texto: string } | null>(null);
-
-  const agregarVariante = () => {
-    if (!vTalle || !vColor || vCantidad < 0 || !vPrecio || Number(vPrecio) <= 0) {
-      setMensaje({ tipo: 'error', texto: 'Completá Talle, Color, cantidad y un precio mayor a 0.' });
-      return;
-    }
-    
-    setVariantes([...variantes, { talle: vTalle, color: vColor, cantidad: vCantidad, precio: Number(vPrecio) }]);
-    
-    setVTalle('');
-    setVColor('');
-    setVCantidad(0);
-    setVPrecio('');
-    setMensaje(null);
-  };
-
-  const quitarVariante = (index: number) => {
-    setVariantes(prev => prev.filter((_, i) => i !== index));
-  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
@@ -54,13 +31,8 @@ export default function NuevoArticuloPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!nombre || !categoriaId) {
-      setMensaje({ tipo: 'error', texto: 'Completá los campos obligatorios del artículo (Nombre, Categoría).' });
-      return;
-    }
-
-    if (variantes.length === 0) {
-      setMensaje({ tipo: 'error', texto: 'Agregá al menos una variante con stock inicial.' });
+    if (!nombre || !categoriaId || !precioInicial || Number(precioInicial) <= 0) {
+      setMensaje({ tipo: 'error', texto: 'Completá los campos obligatorios del artículo (Nombre, Categoría, Precio).' });
       return;
     }
 
@@ -84,12 +56,14 @@ export default function NuevoArticuloPage() {
       setIsUploading(false);
     }
 
-    // 2. Transacción de Base de Datos
+    // 2. Transacción de Base de Datos vía RPC
     const payload = {
       nombre,
       descripcion,
       categoria_id: categoriaId,
-      variantes,
+      genero,
+      tipo_talle: tipoTalle,
+      precio_inicial: Number(precioInicial),
       imagenes: urlsImagenes
     };
 
@@ -100,7 +74,9 @@ export default function NuevoArticuloPage() {
       setNombre('');
       setDescripcion('');
       setCategoriaId('');
-      setVariantes([]);
+      setGenero('Unisex');
+      setTipoTalle('estandar');
+      setPrecioInicial('');
       setArchivosImagenes([]);
     } else {
       setMensaje({ tipo: 'error', texto: result.message });
@@ -156,6 +132,21 @@ export default function NuevoArticuloPage() {
             </div>
 
             <div>
+              <label className="block text-sm font-medium text-zinc-400 mb-1.5">Género</label>
+              <select 
+                className="w-full p-3 bg-zinc-950 border border-zinc-800 rounded-xl focus:ring-1 focus:ring-[#F400A1] focus:border-[#F400A1] outline-none transition-colors"
+                value={genero}
+                onChange={(e) => setGenero(e.target.value)}
+              >
+                <option value="Unisex">Unisex</option>
+                <option value="Hombre">Hombre</option>
+                <option value="Mujer">Mujer</option>
+                <option value="Niños">Niños</option>
+                <option value="Niñas">Niñas</option>
+              </select>
+            </div>
+
+            <div>
               <label className="block text-sm font-medium text-zinc-400 mb-1.5">Descripción</label>
               <textarea 
                 className="w-full p-3 bg-zinc-950 border border-zinc-800 rounded-xl focus:ring-1 focus:ring-[#F400A1] focus:border-[#F400A1] outline-none transition-colors resize-none"
@@ -189,58 +180,46 @@ export default function NuevoArticuloPage() {
           </div>
         </div>
 
-        {/* Lote de Variantes */}
+        {/* Lote de Variantes (Nuevo Flujo) */}
         <div className="bg-zinc-900 p-6 rounded-2xl border border-zinc-800/50 shadow-lg shadow-black/50 flex flex-col">
           <h2 className="text-xl font-semibold mb-6 border-b border-zinc-800/50 pb-3 flex items-center gap-2">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[#F400A1]"><path d="M20 7h-9"/><path d="M14 17H5"/><circle cx="17" cy="17" r="3"/><circle cx="7" cy="7" r="3"/></svg>
-            Configuración Física
+            Configuración Física y Variantes
           </h2>
           
-          <div className="grid grid-cols-2 gap-4 mb-4">
+          <div className="space-y-5">
             <div>
-              <label className="block text-xs font-medium text-zinc-500 mb-1">Talle *</label>
-              <input type="text" className="w-full p-2.5 bg-zinc-950 border border-zinc-800 rounded-xl text-sm outline-none focus:border-zinc-600 transition-colors" value={vTalle} onChange={e => setVTalle(e.target.value)} placeholder="Ej: 42, XL" />
+              <label className="block text-sm font-medium text-zinc-400 mb-1.5">Esquema de Talles *</label>
+              <select 
+                className="w-full p-3 bg-zinc-950 border border-zinc-800 rounded-xl focus:ring-1 focus:ring-[#F400A1] focus:border-[#F400A1] outline-none transition-colors"
+                value={tipoTalle}
+                onChange={(e) => setTipoTalle(e.target.value)}
+              >
+                <option value="estandar">Estándar (S, M, L, XL, XXL)</option>
+                <option value="unico">Único (Talle Único)</option>
+                <option value="tops">Tops (niñas) (8, 10, 12, 14)</option>
+                <option value="sin_talle">Sin talle (Accesorios)</option>
+              </select>
+              <p className="text-xs text-zinc-500 mt-2">
+                El sistema generará automáticamente las variantes de stock en cantidad 0 basadas en el esquema seleccionado.
+              </p>
             </div>
-            <div>
-              <label className="block text-xs font-medium text-zinc-500 mb-1">Color *</label>
-              <input type="text" className="w-full p-2.5 bg-zinc-950 border border-zinc-800 rounded-xl text-sm outline-none focus:border-zinc-600 transition-colors" value={vColor} onChange={e => setVColor(e.target.value)} placeholder="Ej: Negro" />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-zinc-500 mb-1">Stock Inicial *</label>
-              <input type="number" min="0" className="w-full p-2.5 bg-zinc-950 border border-zinc-800 rounded-xl text-sm outline-none focus:border-zinc-600 transition-colors" value={vCantidad} onChange={e => setVCantidad(parseInt(e.target.value) || 0)} />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-zinc-500 mb-1">Precio *</label>
-              <input type="number" step="0.01" className="w-full p-2.5 bg-zinc-950 border border-zinc-800 rounded-xl text-sm outline-none focus:border-zinc-600 transition-colors" value={vPrecio} onChange={e => setVPrecio(Number(e.target.value) || '')} placeholder="Ej: 35000" />
-            </div>
-          </div>
-          
-          <button type="button" onClick={agregarVariante} className="w-full bg-zinc-800 text-zinc-300 py-3 rounded-xl hover:bg-zinc-700 transition-colors text-sm font-semibold mb-6 flex items-center justify-center gap-2">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
-            Añadir Variante
-          </button>
 
-          <div className="flex-1 overflow-y-auto pr-1">
-            {variantes.length === 0 ? (
-              <p className="text-zinc-600 text-sm italic text-center mt-4">Esperando ingreso de variantes...</p>
-            ) : (
-              <ul className="space-y-3">
-                {variantes.map((v, i) => (
-                  <li key={i} className="flex justify-between items-center bg-zinc-950 p-3 border border-zinc-800/50 rounded-xl text-sm shadow-inner">
-                    <div>
-                      <span className="font-bold text-zinc-200 mr-2">{v.talle} - {v.color}</span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <span className="bg-zinc-800 text-zinc-300 px-2 py-1 rounded-md font-mono font-bold text-xs">PRECIO: ${v.precio}</span>
-                      <span className="bg-zinc-800 text-zinc-300 px-2 py-1 rounded-md font-mono font-bold text-xs">STOCK: {v.cantidad}</span>
-                      <button type="button" onClick={() => quitarVariante(i)} className="text-red-500 hover:text-red-400 bg-red-500/10 hover:bg-red-500/20 rounded p-1 transition-colors">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
-                      </button>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
+            <div>
+              <label className="block text-sm font-medium text-zinc-400 mb-1.5">Precio Inicial *</label>
+              <div className="relative">
+                <span className="absolute left-4 top-3 text-zinc-500">$</span>
+                <input 
+                  type="number" 
+                  step="0.01" 
+                  min="0"
+                  className="w-full p-3 pl-8 bg-zinc-950 border border-zinc-800 rounded-xl focus:ring-1 focus:ring-[#F400A1] focus:border-[#F400A1] outline-none transition-colors"
+                  value={precioInicial}
+                  onChange={(e) => setPrecioInicial(Number(e.target.value) || '')}
+                  placeholder="Ej: 35000"
+                />
+              </div>
+            </div>
           </div>
         </div>
 

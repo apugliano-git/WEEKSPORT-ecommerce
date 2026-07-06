@@ -1,5 +1,6 @@
-import { supabase } from '@/lib/supabase';
+import { createClient } from '@/lib/supabase/client';
 
+const supabase = createClient();
 export interface ApiResponse {
   status: 'success' | 'error';
   message: string;
@@ -16,7 +17,9 @@ export interface NuevoArticuloPayload {
   nombre: string;
   descripcion: string;
   categoria_id: string; // O UUID/number según el schema de la BD
-  variantes: NuevaVariante[];
+  genero: string;
+  tipo_talle: string;
+  precio_inicial: number;
   imagenes?: string[];
 }
 
@@ -45,52 +48,27 @@ export async function actualizarStockVariante(id: string, nuevoStock: number): P
 }
 
 /**
- * Crea un nuevo producto y sus variantes con el stock inicial definido.
+ * Crea un nuevo producto y sus variantes usando la función RPC.
  */
 export async function crearArticuloCompleto(payload: NuevoArticuloPayload): Promise<ApiResponse> {
   try {
-    // 1. Insertar el artículo principal en la tabla 'productos'
-    const { data: producto, error: errProd } = await supabase
-      .from('productos')
-      .insert({
-        nombre: payload.nombre,
-        descripcion: payload.descripcion,
-        categoria_id: payload.categoria_id,
-        imagenes: payload.imagenes || []
-      })
-      .select('id')
-      .single();
+    const { error } = await supabase.rpc('crear_producto_con_variantes', {
+      p_nombre: payload.nombre,
+      p_descripcion: payload.descripcion,
+      p_categoria_id: payload.categoria_id,
+      p_genero: payload.genero,
+      p_tipo_talle: payload.tipo_talle,
+      p_precio_inicial: payload.precio_inicial,
+      p_imagenes: payload.imagenes || []
+    });
 
-    if (errProd || !producto) {
-      return { status: 'error', message: `Fallo al registrar el artículo: ${errProd?.message}` };
-    }
-
-    const productoId = producto.id;
-
-    // 2. Preparar la estructura de datos relacional para variantes
-    const variantesParaInsertar = payload.variantes.map(v => ({
-      producto_id: productoId, // Foreign Key relacional
-      talle: v.talle,
-      color: v.color,
-      cantidad: v.cantidad,
-      precio: v.precio
-    }));
-
-    // 3. Insertar todas las variantes en 'variantes_stock' (Batch Insert)
-    const { error: errVar } = await supabase
-      .from('variantes_stock')
-      .insert(variantesParaInsertar);
-
-    if (errVar) {
-      return { 
-        status: 'error', 
-        message: 'El artículo base fue creado, pero falló la inicialización física del stock y variantes.' 
-      };
+    if (error) {
+      return { status: 'error', message: `Fallo al registrar el artículo: ${error.message}` };
     }
 
     return { status: 'success', message: 'Artículo completo y stock inicial registrados exitosamente en el sistema.' };
   } catch (err: any) {
-    return { status: 'error', message: 'Fallo de conexión crítico o error interno en el servidor.' };
+    return { status: 'error', message: err.message || 'Error desconocido' };
   }
 }
 
