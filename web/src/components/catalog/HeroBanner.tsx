@@ -7,10 +7,6 @@ interface HeroBannerProps {
 }
 
 export function HeroBanner({ imageUrl }: HeroBannerProps) {
-  const scrollToCatalog = () => {
-    document.getElementById('catalogo')?.scrollIntoView({ behavior: 'smooth' })
-  }
-
   return (
     <section className="relative w-full h-[65vh] min-h-[480px] max-h-[720px] overflow-hidden bg-gradient-to-br from-[#1a0014] via-[#0F0F12] to-[#0a0a12] border-b border-white/5 flex flex-col justify-end">
       {/* Glow blob fucsia blur */}
@@ -40,12 +36,6 @@ export function HeroBanner({ imageUrl }: HeroBannerProps) {
         <p className="text-lg sm:text-xl text-gray-400 max-w-2xl font-light leading-relaxed mb-8">
           Indumentaria de barrio diseñada para entrenar sin límites. Elevá tu potencial con calzas, tops y remeras de calidad premium.
         </p>
-        <button 
-          onClick={scrollToCatalog}
-          className="inline-flex items-center justify-center px-8 py-3.5 bg-[#F400A1] hover:bg-[#D000A0] text-white font-bold rounded-full transition-colors"
-        >
-          Ver Catálogo
-        </button>
       </div>
     </section>
   )
