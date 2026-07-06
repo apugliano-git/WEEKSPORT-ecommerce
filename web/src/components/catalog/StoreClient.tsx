@@ -19,7 +19,7 @@ export function StoreClient({ productos, categorias }: StoreClientProps) {
       <HeroBanner />
       
       <section className="max-w-7xl w-full mx-auto self-center px-4 sm:px-6 lg:px-8 py-20 md:py-24 bg-[#0F0F12]">
-        <div className="mb-24 md:mb-32">
+        <div className="pb-24 md:pb-32">
           <CategoryGrid 
             categories={categorias}
             activeCategoryId={activeCategoryId}
@@ -28,7 +28,7 @@ export function StoreClient({ productos, categorias }: StoreClientProps) {
         </div>
         
         {/* El ID catalogo es clave para el smooth scroll */}
-        <div id="catalogo" className="scroll-mt-24 mb-24 md:mb-32">
+        <div id="catalogo" className="scroll-mt-24 pb-24 md:pb-32">
           <CatalogClient 
             productos={productos} 
             categorias={categorias} 

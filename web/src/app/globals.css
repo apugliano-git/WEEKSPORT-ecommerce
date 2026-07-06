@@ -26,14 +26,7 @@
   --font-display: 'Outfit', system-ui, sans-serif;
 }
 
-/* Reset y base */
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
+/* Reset y base handled by Tailwind preflight */
 
 html {
   scroll-behavior: smooth;

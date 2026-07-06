@@ -14,14 +14,14 @@ export function Header() {
       <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 md:h-32 flex items-center justify-between gap-4">
         
         {/* Zona 1: Logo */}
-        <div className="flex items-center shrink-0">
-          <Link href="/" className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center shrink-0 h-full">
+          <Link href="/" className="flex items-center h-full shrink-0">
             <Image 
               src="/logo.jpg" 
               alt="WEEKSPORT" 
               width={140} 
               height={40} 
-              className="h-8 md:h-10 w-auto" 
+              className="h-full w-auto" 
               priority 
             />
           </Link>
