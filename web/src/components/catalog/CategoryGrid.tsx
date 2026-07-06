@@ -38,7 +38,7 @@ export function CategoryGrid({ categories, activeCategoryId, onSelectCategory }:
 
   return (
     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-      {categories.slice(0, 7).map((category, index) => {
+      {categories.slice(0, 8).map((category, index) => {
         const isActive = activeCategoryId === category.id
         const bgImage = placeholders[index % placeholders.length]
         
@@ -68,23 +68,6 @@ export function CategoryGrid({ categories, activeCategoryId, onSelectCategory }:
           </button>
         )
       })}
-
-      {/* Tarjeta Promoción (Hardcodeada) */}
-      <div className="relative w-full aspect-[4/3] rounded-xl overflow-hidden opacity-60 pointer-events-none bg-gradient-to-br from-[#1a0014] to-[#0a0a12]">
-        <div className="absolute inset-0 bg-black/60" />
-        
-        <div className="absolute top-3 right-3">
-          <span className="inline-block bg-[#F400A1] text-white text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded">
-            Próximamente
-          </span>
-        </div>
-
-        <div className="absolute inset-0 p-4 flex items-end">
-          <span className="font-display font-bold text-white uppercase tracking-wide text-left text-sm sm:text-base">
-            Promoción
-          </span>
-        </div>
-      </div>
     </div>
   )
 }
