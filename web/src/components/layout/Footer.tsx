@@ -70,14 +70,35 @@ export function Footer() {
               >
                 Instagram: weeksport_
               </Link>
-              <span>Tel: +54 9 11 XXXX-XXXX</span>
-              <a href="mailto:weeksport1310@gmail.com" className="hover:text-[#F400A1] transition-colors">
+              <a 
+                href="https://wa.me/54911XXXXXXXX" 
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:text-[#F400A1] transition-colors"
+              >
+                Tel: +54 9 11 XXXX-XXXX
+              </a>
+              <a 
+                href="mailto:weeksport1310@gmail.com" 
+                className="hover:text-[#F400A1] transition-colors"
+              >
                 weeksport1310@gmail.com
               </a>
             </div>
           </div>
 
         </div>
+        
+        {/* Enlace de Administrador Discreto */}
+        <div className="mt-12 text-center">
+          <Link 
+            href="/admin/login" 
+            className="font-sans text-xs text-zinc-600 hover:text-zinc-400 transition-colors"
+          >
+            ¿Es administrador del comercio? Ingrese aquí.
+          </Link>
+        </div>
+
         {/* Aviso Legal y Copyright */}
         <div className="mt-16 pt-6 border-t border-white/5 text-center flex flex-col gap-2">
           <p className="font-sans text-[10px] text-gray-600 max-w-2xl mx-auto leading-relaxed">
