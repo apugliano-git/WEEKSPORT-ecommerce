@@ -54,7 +54,7 @@ export function ProductInfo({ producto }: ProductInfoProps) {
   }
 
   return (
-    <div className="flex flex-col text-white w-full max-w-lg mx-auto md:mx-0">
+    <div className="flex flex-col text-white w-full max-w-lg md:max-w-xl mx-auto md:mx-0 overflow-hidden">
       
       {/* Title & Badge */}
       <div className="flex flex-col gap-2">
@@ -195,7 +195,7 @@ export function ProductInfo({ producto }: ProductInfoProps) {
           <h3 className="text-sm font-medium text-white/70 uppercase tracking-widest mb-4">
             Descripción
           </h3>
-          <div className="text-white/80 font-sans text-base leading-relaxed whitespace-pre-wrap">
+          <div className="text-white/80 font-sans text-base leading-relaxed whitespace-pre-wrap break-words [overflow-wrap:anywhere] max-w-full">
             {producto.descripcion}
           </div>
         </div>

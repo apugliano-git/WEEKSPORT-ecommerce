@@ -18,7 +18,18 @@ const puppeteer = require('puppeteer');
   console.log("Navegando a:", href);
   
   await pageMobile.goto('http://localhost:3000' + href, { waitUntil: 'networkidle0' });
-  await new Promise(r => setTimeout(r, 2000)); // Wait for images
+  await new Promise(r => setTimeout(r, 2000));
+  // Set long text to test overflow
+  await pageMobile.evaluate(() => {
+    const headers = Array.from(document.querySelectorAll('h3'));
+    const desc = headers.find(h => h.textContent.includes("Descripción"))?.nextElementSibling;
+    if(desc) desc.textContent = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+  });
+  const mobileWidth = await pageMobile.evaluate(() => document.body.scrollWidth);
+  console.log("Mobile body width:", mobileWidth, "Viewport: 412");
+
+  await pageMobile.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+  await new Promise(r => setTimeout(r, 1000));
   await pageMobile.screenshot({ path: 'product_mobile.png', fullPage: true });
 
   // Test Desktop
@@ -26,7 +37,12 @@ const puppeteer = require('puppeteer');
   const pageDesktop = await browser.newPage();
   await pageDesktop.setViewport({ width: 1600, height: 900 });
   await pageDesktop.goto('http://localhost:3000' + href, { waitUntil: 'networkidle0' });
-  await new Promise(r => setTimeout(r, 2000)); // Wait for images
+  await new Promise(r => setTimeout(r, 2000));
+  const desktopWidth = await pageDesktop.evaluate(() => document.body.scrollWidth);
+  console.log("Desktop body width:", desktopWidth, "Viewport: 1600");
+  
+  await pageDesktop.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+  await new Promise(r => setTimeout(r, 1000));
   await pageDesktop.screenshot({ path: 'product_desktop.png', fullPage: true });
 
   await browser.close();
