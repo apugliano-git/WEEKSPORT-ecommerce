@@ -21,6 +21,7 @@ export interface Producto {
   categoria_id: string;
   imagenes: string[];
   activo: boolean;
+  genero?: string;
   created_at: string;
   variantes_stock?: VarianteStock[];
 }

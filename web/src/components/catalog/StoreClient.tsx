@@ -6,13 +6,17 @@ import { HeroBanner } from './HeroBanner'
 import { CategoryGrid } from './CategoryGrid'
 import { CatalogClient } from './CatalogClient'
 
+import { useSearchParams } from 'next/navigation'
+
 interface StoreClientProps {
   productos: Producto[]
   categorias: { id: string; name: string }[]
 }
 
 export function StoreClient({ productos, categorias }: StoreClientProps) {
-  const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null)
+  const searchParams = useSearchParams()
+  const defaultCategory = searchParams.get('categoria')
+  const [activeCategoryId, setActiveCategoryId] = useState<string | null>(defaultCategory)
 
   return (
     <>

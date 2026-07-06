@@ -8,32 +8,15 @@ interface ProductCardProps {
   producto: Producto;
 }
 
+import Link from 'next/link'
+
 export function ProductCard({ producto }: ProductCardProps) {
-  // TODO: migrar a modal de detalle de producto
-  /*
-  const { addItem } = useCart()
-  const variantes = producto.variantes_stock || []
-  const talles = Array.from(new Set(variantes.map(v => v.talle)))
-  const colores = Array.from(new Set(variantes.map(v => v.color)))
-  const varianteInicial = variantes.find(v => v.cantidad > 0) || variantes[0];
-  const [selectedTalle, setSelectedTalle] = useState<string>(varianteInicial?.talle || '')
-  const [selectedColor, setSelectedColor] = useState<string>(varianteInicial?.color || '')
-  const selectedVariante = variantes.find(v => v.talle === selectedTalle && v.color === selectedColor)
-  const isOutOfStock = !selectedVariante || selectedVariante.cantidad === 0;
-
-  const handleAddToCart = () => {
-    if (selectedVariante && selectedVariante.cantidad > 0) {
-      addItem(producto, selectedVariante, 1)
-    }
-  }
-  */
-
   // Por ahora, asumimos si hay alguna variante con stock o usamos el precio de la primera
   const precioMostrar = producto.variantes_stock?.[0]?.precio || 0;
   const isOutOfStock = !producto.variantes_stock?.some(v => v.cantidad > 0);
 
   return (
-    <button className="flex flex-col bg-[#1A1A20] rounded-2xl overflow-hidden border border-white/5 shadow-[0_8px_30px_rgba(0,0,0,0.12)] group hover:-translate-y-1 hover:shadow-[0_20px_40px_-15px_rgba(255,92,0,0.15)] hover:border-white/10 transition-all duration-300 ease-out text-left w-full">
+    <Link href={`/producto/${producto.id}`} className="flex flex-col bg-[#1A1A20] rounded-2xl overflow-hidden border border-white/5 shadow-[0_8px_30px_rgba(0,0,0,0.12)] group hover:-translate-y-1 hover:shadow-[0_20px_40px_-15px_rgba(255,92,0,0.15)] hover:border-white/10 transition-all duration-300 ease-out text-left w-full">
       {/* Imagen */}
       <div className="relative aspect-square bg-[#0F0F12] overflow-hidden w-full">
         {producto.imagenes[0] ? (
@@ -68,6 +51,6 @@ export function ProductCard({ producto }: ProductCardProps) {
           </span>
         </div>
       </div>
-    </button>
+    </Link>
   )
 }
