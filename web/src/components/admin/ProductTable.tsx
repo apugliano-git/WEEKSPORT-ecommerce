@@ -4,25 +4,353 @@ import React, { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Producto, Categoria, VarianteStock } from '@/types'
 import { actualizarProducto } from '@/lib/productoService'
+import { crearVariante, actualizarVariante, eliminarVariante } from '@/lib/variantesService'
+
+interface TallePorTipo {
+  tipo_talle: string;
+  talle: string;
+  orden: number;
+}
 
 interface ProductTableProps {
   productos: Producto[];
   categorias: Categoria[];
+  tallesPorTipo: TallePorTipo[];
 }
 
-function ProductRow({ product, categoryMap, onEdit }: { product: Producto, categoryMap: Record<string, string>, onEdit: (p: Producto) => void }) {
+// ─────────────────────────────────────────────
+// Sub-componente: fila de variante (editable)
+// ─────────────────────────────────────────────
+function VarianteRow({
+  variante,
+  tallesDisponibles,
+  onRefresh,
+}: {
+  variante: VarianteStock;
+  tallesDisponibles: string[];
+  onRefresh: () => void;
+}) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [status, setStatus] = useState<'idle' | 'saving' | 'error'>('idle');
+  const [errorMsg, setErrorMsg] = useState('');
+
+  const [talle, setTalle] = useState(variante.talle);
+  const [color, setColor] = useState(variante.color);
+  const [cantidad, setCantidad] = useState(variante.cantidad);
+  const [precio, setPrecio] = useState(variante.precio);
+  const [visible, setVisible] = useState(variante.visible_en_catalogo);
+
+  const isCritical = variante.cantidad < 3;
+  const isOutOfStock = variante.cantidad === 0;
+
+  const handleCancel = () => {
+    setTalle(variante.talle);
+    setColor(variante.color);
+    setCantidad(variante.cantidad);
+    setPrecio(variante.precio);
+    setVisible(variante.visible_en_catalogo);
+    setStatus('idle');
+    setErrorMsg('');
+    setIsEditing(false);
+  };
+
+  const handleSave = async () => {
+    setStatus('saving');
+    setErrorMsg('');
+    const res = await actualizarVariante(variante.id, { talle, color, cantidad, precio, visible_en_catalogo: visible });
+    if (res.status === 'success') {
+      setIsEditing(false);
+      setStatus('idle');
+      onRefresh();
+    } else {
+      setStatus('error');
+      setErrorMsg(res.message);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!window.confirm('¿Seguro que querés eliminar esta variante? Esta acción no se puede deshacer.')) return;
+    const res = await eliminarVariante(variante.id);
+    if (res.status === 'success') {
+      onRefresh();
+    } else {
+      alert(`Error al eliminar: ${res.message}`);
+    }
+  };
+
+  if (isEditing) {
+    return (
+      <>
+        <tr className="bg-[#F400A1]/5 border border-[#F400A1]/20">
+          <td className="px-3 py-2 text-gray-500 font-mono text-xs">{variante.id.split('-')[0]}...</td>
+          <td className="px-3 py-2">
+            <select
+              value={talle}
+              onChange={e => setTalle(e.target.value)}
+              className="w-full bg-[#0F0F12] text-white border border-white/10 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-[#F400A1]"
+            >
+              {tallesDisponibles.map(t => <option key={t} value={t}>{t}</option>)}
+              {/* Siempre incluir el talle actual aunque no esté en la lista */}
+              {!tallesDisponibles.includes(talle) && <option value={talle}>{talle} (actual)</option>}
+            </select>
+          </td>
+          <td className="px-3 py-2">
+            <input
+              type="text"
+              value={color}
+              onChange={e => setColor(e.target.value)}
+              className="w-full bg-[#0F0F12] text-white border border-white/10 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-[#F400A1]"
+            />
+          </td>
+          <td className="px-3 py-2 text-right">
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              value={precio}
+              onChange={e => setPrecio(Number(e.target.value))}
+              className="w-24 bg-[#0F0F12] text-white border border-white/10 rounded-lg px-2 py-1 text-xs text-right focus:outline-none focus:ring-1 focus:ring-[#F400A1]"
+            />
+          </td>
+          <td className="px-3 py-2 text-center">
+            <input
+              type="number"
+              min="0"
+              value={cantidad}
+              onChange={e => setCantidad(Number(e.target.value))}
+              className="w-16 bg-[#0F0F12] text-white border border-white/10 rounded-lg px-2 py-1 text-xs text-center focus:outline-none focus:ring-1 focus:ring-[#F400A1]"
+            />
+          </td>
+          <td className="px-3 py-2 text-center">
+            <button
+              type="button"
+              onClick={() => setVisible(!visible)}
+              className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${visible ? 'bg-[#F400A1]' : 'bg-zinc-600'}`}
+            >
+              <span className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${visible ? 'translate-x-5' : 'translate-x-1'}`} />
+            </button>
+          </td>
+          <td className="px-3 py-2 text-center">
+            <div className="flex items-center justify-center gap-1.5 flex-col">
+              <div className="flex gap-1.5">
+                <button
+                  onClick={handleSave}
+                  disabled={status === 'saving'}
+                  className="px-2.5 py-1 bg-[#F400A1] hover:bg-[#D000A0] text-white text-[11px] font-bold rounded-lg transition-colors disabled:opacity-50"
+                >
+                  {status === 'saving' ? '...' : 'Guardar'}
+                </button>
+                <button
+                  onClick={handleCancel}
+                  disabled={status === 'saving'}
+                  className="px-2.5 py-1 bg-zinc-700 hover:bg-zinc-600 text-white text-[11px] font-bold rounded-lg transition-colors disabled:opacity-50"
+                >
+                  Cancelar
+                </button>
+              </div>
+              {status === 'error' && (
+                <span className="text-[10px] text-red-400 max-w-[120px] text-center leading-tight">{errorMsg}</span>
+              )}
+            </div>
+          </td>
+        </tr>
+      </>
+    );
+  }
+
+  return (
+    <tr className={`${isCritical ? 'bg-red-500/[0.02]' : 'hover:bg-white/[0.02]'} transition-colors`}>
+      <td className="px-4 py-3 text-gray-500 font-mono text-xs">{variante.id.split('-')[0]}...</td>
+      <td className="px-4 py-3 text-gray-300 font-semibold">{variante.talle}</td>
+      <td className="px-4 py-3 text-gray-300">{variante.color}</td>
+      <td className="px-4 py-3 text-right text-gray-300">
+        {variante.precio.toLocaleString('es-AR', { style: 'currency', currency: 'ARS' })}
+      </td>
+      <td className="px-4 py-3 text-center">
+        <span className={`inline-flex items-center justify-center font-bold px-2 py-0.5 rounded text-[11px] ${
+          isOutOfStock
+            ? 'bg-red-500/10 text-red-500 border border-red-500/20'
+            : isCritical
+              ? 'bg-red-500/20 text-red-400 border border-red-500/40 animate-pulse font-extrabold'
+              : 'bg-green-500/10 text-green-400 border border-green-500/20'
+        }`}>
+          {variante.cantidad} uds
+        </span>
+      </td>
+      <td className="px-4 py-3 text-center">
+        <span className={`text-[11px] font-semibold ${variante.visible_en_catalogo ? 'text-emerald-400' : 'text-gray-500'}`}>
+          {variante.visible_en_catalogo ? 'Visible' : 'Oculta'}
+        </span>
+      </td>
+      <td className="px-4 py-3 text-center">
+        <div className="flex items-center justify-center gap-1.5">
+          <button
+            onClick={() => setIsEditing(true)}
+            className="px-2.5 py-1 bg-zinc-800 hover:bg-zinc-700 text-white text-[11px] font-bold rounded-lg transition-colors"
+          >
+            Editar
+          </button>
+          <button
+            onClick={handleDelete}
+            className="px-2.5 py-1 bg-red-500/10 hover:bg-red-500/20 text-red-400 text-[11px] font-bold rounded-lg border border-red-500/20 transition-colors"
+          >
+            Eliminar
+          </button>
+        </div>
+      </td>
+    </tr>
+  );
+}
+
+// ─────────────────────────────────────────────
+// Sub-componente: fila nueva variante (inline)
+// ─────────────────────────────────────────────
+function NuevaVarianteRow({
+  productoId,
+  tallesDisponibles,
+  onSuccess,
+  onCancel,
+}: {
+  productoId: string;
+  tallesDisponibles: string[];
+  onSuccess: () => void;
+  onCancel: () => void;
+}) {
+  const [talle, setTalle] = useState(tallesDisponibles[0] || '');
+  const [color, setColor] = useState('');
+  const [cantidad, setCantidad] = useState(0);
+  const [precio, setPrecio] = useState(0);
+  const [visible, setVisible] = useState(true);
+  const [status, setStatus] = useState<'idle' | 'saving' | 'error'>('idle');
+  const [errorMsg, setErrorMsg] = useState('');
+
+  const handleSave = async () => {
+    if (!talle || !color || precio <= 0) {
+      setStatus('error');
+      setErrorMsg('Completá talle, color y precio antes de guardar.');
+      return;
+    }
+    setStatus('saving');
+    setErrorMsg('');
+    const res = await crearVariante(productoId, talle, color, cantidad, precio, visible);
+    if (res.status === 'success') {
+      onSuccess();
+    } else {
+      setStatus('error');
+      setErrorMsg(res.message);
+    }
+  };
+
+  return (
+    <tr className="bg-emerald-500/5 border border-emerald-500/20">
+      <td className="px-3 py-2 text-gray-500 font-mono text-xs italic">nueva</td>
+      <td className="px-3 py-2">
+        <select
+          value={talle}
+          onChange={e => setTalle(e.target.value)}
+          className="w-full bg-[#0F0F12] text-white border border-white/10 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500"
+        >
+          {tallesDisponibles.map(t => <option key={t} value={t}>{t}</option>)}
+        </select>
+      </td>
+      <td className="px-3 py-2">
+        <input
+          type="text"
+          placeholder="Ej: Negro"
+          value={color}
+          onChange={e => setColor(e.target.value)}
+          className="w-full bg-[#0F0F12] text-white border border-white/10 rounded-lg px-2 py-1 text-xs placeholder-gray-600 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+        />
+      </td>
+      <td className="px-3 py-2 text-right">
+        <input
+          type="number"
+          min="0"
+          step="0.01"
+          placeholder="0"
+          value={precio || ''}
+          onChange={e => setPrecio(Number(e.target.value))}
+          className="w-24 bg-[#0F0F12] text-white border border-white/10 rounded-lg px-2 py-1 text-xs text-right placeholder-gray-600 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+        />
+      </td>
+      <td className="px-3 py-2 text-center">
+        <input
+          type="number"
+          min="0"
+          placeholder="0"
+          value={cantidad || ''}
+          onChange={e => setCantidad(Number(e.target.value))}
+          className="w-16 bg-[#0F0F12] text-white border border-white/10 rounded-lg px-2 py-1 text-xs text-center placeholder-gray-600 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+        />
+      </td>
+      <td className="px-3 py-2 text-center">
+        <button
+          type="button"
+          onClick={() => setVisible(!visible)}
+          className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${visible ? 'bg-emerald-500' : 'bg-zinc-600'}`}
+        >
+          <span className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${visible ? 'translate-x-5' : 'translate-x-1'}`} />
+        </button>
+      </td>
+      <td className="px-3 py-2 text-center">
+        <div className="flex items-center justify-center gap-1.5 flex-col">
+          <div className="flex gap-1.5">
+            <button
+              onClick={handleSave}
+              disabled={status === 'saving'}
+              className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold rounded-lg transition-colors disabled:opacity-50"
+            >
+              {status === 'saving' ? '...' : 'Crear'}
+            </button>
+            <button
+              onClick={onCancel}
+              disabled={status === 'saving'}
+              className="px-2.5 py-1 bg-zinc-700 hover:bg-zinc-600 text-white text-[11px] font-bold rounded-lg transition-colors disabled:opacity-50"
+            >
+              Cancelar
+            </button>
+          </div>
+          {status === 'error' && (
+            <span className="text-[10px] text-red-400 max-w-[120px] text-center leading-tight">{errorMsg}</span>
+          )}
+        </div>
+      </td>
+    </tr>
+  );
+}
+
+// ─────────────────────────────────────────────
+// Sub-componente: fila de producto (expandible)
+// ─────────────────────────────────────────────
+function ProductRow({
+  product,
+  categoryMap,
+  tallesPorTipo,
+  onEdit,
+  onRefresh,
+}: {
+  product: Producto;
+  categoryMap: Record<string, string>;
+  tallesPorTipo: TallePorTipo[];
+  onEdit: (p: Producto) => void;
+  onRefresh: () => void;
+}) {
   const [isExpanded, setIsExpanded] = useState(false);
-  
+  const [showNuevaVariante, setShowNuevaVariante] = useState(false);
+
   const variants: VarianteStock[] = product.variantes_stock || [];
-  
+
+  const tallesDisponibles = tallesPorTipo
+    .filter(t => t.tipo_talle === product.tipo_talle)
+    .map(t => t.talle);
+
   const totalStock = variants.reduce((sum, v) => sum + v.cantidad, 0);
-  
+
   let priceDisplay = 'N/A';
   if (variants.length > 0) {
     const prices = variants.map(v => v.precio);
     const minPrice = Math.min(...prices);
     const maxPrice = Math.max(...prices);
-    
     if (minPrice === maxPrice) {
       priceDisplay = minPrice.toLocaleString('es-AR', { style: 'currency', currency: 'ARS' });
     } else {
@@ -36,7 +364,7 @@ function ProductRow({ product, categoryMap, onEdit }: { product: Producto, categ
     <>
       <tr className="hover:bg-white/[0.02] transition-colors border-b border-white/5">
         <td className="px-6 py-4">
-          <button 
+          <button
             onClick={() => setIsExpanded(!isExpanded)}
             className="flex items-center gap-3 focus:outline-none group"
           >
@@ -60,8 +388,8 @@ function ProductRow({ product, categoryMap, onEdit }: { product: Producto, categ
         <td className="px-6 py-4 text-right font-medium text-white">{priceDisplay}</td>
         <td className="px-6 py-4 text-center">
           <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold ${
-            product.activo 
-              ? 'bg-emerald-500/10 text-emerald-400' 
+            product.activo
+              ? 'bg-emerald-500/10 text-emerald-400'
               : 'bg-gray-500/10 text-gray-400'
           }`}>
             <span className={`w-1.5 h-1.5 rounded-full ${product.activo ? 'bg-emerald-400' : 'bg-gray-400'}`} />
@@ -77,62 +405,68 @@ function ProductRow({ product, categoryMap, onEdit }: { product: Producto, categ
           </button>
         </td>
       </tr>
-      
+
       {isExpanded && (
         <tr>
           <td colSpan={7} className="p-0 border-b border-white/5 bg-black/20">
-            <div className="px-12 py-5 animate-fadeIn">
-              {variants.length === 0 ? (
+            <div className="px-12 py-5">
+              {variants.length === 0 && !showNuevaVariante ? (
                 <p className="text-sm text-gray-500 text-center py-2">Este producto no tiene variantes de stock.</p>
               ) : (
                 <table className="w-full text-left border-collapse bg-[#1A1A20] rounded-xl border border-white/5 overflow-hidden shadow-inner">
                   <thead>
                     <tr className="bg-[#0F0F12] text-[10px] text-gray-500 font-bold uppercase tracking-widest border-b border-white/5">
-                      <th className="px-4 py-3">Variante ID</th>
+                      <th className="px-4 py-3">ID</th>
                       <th className="px-4 py-3">Talle</th>
                       <th className="px-4 py-3">Color</th>
                       <th className="px-4 py-3 text-right">Precio</th>
                       <th className="px-4 py-3 text-center">Stock</th>
+                      <th className="px-4 py-3 text-center">Visible</th>
+                      <th className="px-4 py-3 text-center w-36">Acciones</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-white/5 text-sm">
-                    {variants.map(v => {
-                      const isCritical = v.cantidad < 3;
-                      const isOutOfStock = v.cantidad === 0;
-                      return (
-                        <tr key={v.id} className={`${isCritical ? 'bg-red-500/[0.02]' : 'hover:bg-white/[0.02]'}`}>
-                          <td className="px-4 py-3 text-gray-500 font-mono text-xs">{v.id.split('-')[0]}...</td>
-                          <td className="px-4 py-3 text-gray-300 font-semibold">{v.talle}</td>
-                          <td className="px-4 py-3 text-gray-300">{v.color}</td>
-                          <td className="px-4 py-3 text-right text-gray-300">
-                            {v.precio.toLocaleString('es-AR', { style: 'currency', currency: 'ARS' })}
-                          </td>
-                          <td className="px-4 py-3 text-center">
-                            <span className={`inline-flex items-center justify-center font-bold px-2 py-0.5 rounded text-[11px] ${
-                              isOutOfStock
-                                ? 'bg-red-500/10 text-red-500 border border-red-500/20'
-                                : isCritical
-                                  ? 'bg-red-500/20 text-red-400 border border-red-500/40 animate-pulse font-extrabold'
-                                  : 'bg-green-500/10 text-green-400 border border-green-500/20'
-                            }`}>
-                              {v.cantidad} uds
-                            </span>
-                          </td>
-                        </tr>
-                      )
-                    })}
+                    {variants.map(v => (
+                      <VarianteRow
+                        key={v.id}
+                        variante={v}
+                        tallesDisponibles={tallesDisponibles}
+                        onRefresh={onRefresh}
+                      />
+                    ))}
+                    {showNuevaVariante && (
+                      <NuevaVarianteRow
+                        productoId={product.id}
+                        tallesDisponibles={tallesDisponibles}
+                        onSuccess={() => { setShowNuevaVariante(false); onRefresh(); }}
+                        onCancel={() => setShowNuevaVariante(false)}
+                      />
+                    )}
                   </tbody>
                 </table>
+              )}
+
+              {!showNuevaVariante && (
+                <button
+                  onClick={() => setShowNuevaVariante(true)}
+                  className="mt-4 flex items-center gap-2 px-4 py-2 text-xs font-bold text-emerald-400 border border-emerald-500/30 bg-emerald-500/5 hover:bg-emerald-500/10 rounded-xl transition-colors"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+                  Agregar variante
+                </button>
               )}
             </div>
           </td>
         </tr>
       )}
     </>
-  )
+  );
 }
 
-export function ProductTable({ productos, categorias }: ProductTableProps) {
+// ─────────────────────────────────────────────
+// Componente principal
+// ─────────────────────────────────────────────
+export function ProductTable({ productos, categorias, tallesPorTipo }: ProductTableProps) {
   const router = useRouter()
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedCategoryId, setSelectedCategoryId] = useState('')
@@ -142,12 +476,12 @@ export function ProductTable({ productos, categorias }: ProductTableProps) {
     descripcion: string;
     categoria_id: string;
     genero: string;
+    tipo_talle: string;
     activo: boolean;
   } | null>(null)
   const [editStatus, setEditStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle')
   const [editError, setEditError] = useState('')
 
-  // Mapear IDs de categorías a nombres para una visualización amigable
   const categoryMap = React.useMemo(() => {
     return categorias.reduce((acc, cat) => {
       acc[cat.id] = cat.nombre;
@@ -155,7 +489,6 @@ export function ProductTable({ productos, categorias }: ProductTableProps) {
     }, {} as Record<string, string>);
   }, [categorias]);
 
-  // Filtrar productos
   const filteredProducts = React.useMemo(() => {
     let result = productos;
 
@@ -164,15 +497,16 @@ export function ProductTable({ productos, categorias }: ProductTableProps) {
     }
 
     if (!searchTerm.trim()) return result;
-    
+
     const term = searchTerm.toLowerCase();
     return result.filter(prod => {
-      const matchProduct = prod.nombre.toLowerCase().includes(term) ||
-                           (categoryMap[prod.categoria_id] || '').toLowerCase().includes(term) ||
-                           (prod.genero || '').toLowerCase().includes(term);
-      
-      const matchVariant = (prod.variantes_stock || []).some(v => 
-        v.talle.toLowerCase().includes(term) || 
+      const matchProduct =
+        prod.nombre.toLowerCase().includes(term) ||
+        (categoryMap[prod.categoria_id] || '').toLowerCase().includes(term) ||
+        (prod.genero || '').toLowerCase().includes(term);
+
+      const matchVariant = (prod.variantes_stock || []).some(v =>
+        v.talle.toLowerCase().includes(term) ||
         v.color.toLowerCase().includes(term)
       );
 
@@ -187,18 +521,20 @@ export function ProductTable({ productos, categorias }: ProductTableProps) {
       descripcion: product.descripcion || '',
       categoria_id: product.categoria_id,
       genero: product.genero || 'Unisex',
+      tipo_talle: product.tipo_talle,
       activo: product.activo,
     });
     setEditStatus('idle');
     setEditError('');
-  }
+  };
 
   return (
     <div className="bg-[#1A1A20] rounded-2xl border border-white/5 overflow-hidden shadow-lg">
+      {/* Cabecera y filtros */}
       <div className="p-6 border-b border-white/5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h3 className="text-xl font-bold font-display text-white">Inventario de Productos</h3>
-          <p className="text-sm text-gray-400 mt-1">Lista detallada del catálogo con stock agrupado por producto.</p>
+          <p className="text-sm text-gray-400 mt-1">Catálogo agrupado por producto. Expandí cada fila para gestionar sus variantes.</p>
         </div>
         <div className="flex flex-col sm:flex-row gap-3">
           <select
@@ -226,6 +562,7 @@ export function ProductTable({ productos, categorias }: ProductTableProps) {
         </div>
       </div>
 
+      {/* Tabla principal */}
       <div className="overflow-x-auto animate-fadeIn">
         <table className="w-full text-left border-collapse">
           <thead>
@@ -248,11 +585,13 @@ export function ProductTable({ productos, categorias }: ProductTableProps) {
               </tr>
             ) : (
               filteredProducts.map(prod => (
-                <ProductRow 
-                  key={prod.id} 
-                  product={prod} 
-                  categoryMap={categoryMap} 
-                  onEdit={handleEdit} 
+                <ProductRow
+                  key={prod.id}
+                  product={prod}
+                  categoryMap={categoryMap}
+                  tallesPorTipo={tallesPorTipo}
+                  onEdit={handleEdit}
+                  onRefresh={() => router.refresh()}
                 />
               ))
             )}
@@ -260,6 +599,7 @@ export function ProductTable({ productos, categorias }: ProductTableProps) {
         </table>
       </div>
 
+      {/* Modal edición de producto (intacto) */}
       {editingProduct && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
           <div className="bg-[#1A1A20] w-full max-w-lg rounded-2xl border border-white/10 shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-fadeIn">
@@ -269,23 +609,23 @@ export function ProductTable({ productos, categorias }: ProductTableProps) {
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
               </button>
             </div>
-            
+
             <div className="p-6 overflow-y-auto flex-1 space-y-5">
               <div>
                 <label className="block text-sm font-medium text-gray-400 mb-1.5">Nombre</label>
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   value={editingProduct.nombre}
-                  onChange={e => setEditingProduct({...editingProduct, nombre: e.target.value})}
+                  onChange={e => setEditingProduct({ ...editingProduct, nombre: e.target.value })}
                   className="w-full bg-[#23232A] text-white border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#F400A1]"
                 />
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-400 mb-1.5">Descripción</label>
-                <textarea 
+                <textarea
                   value={editingProduct.descripcion}
-                  onChange={e => setEditingProduct({...editingProduct, descripcion: e.target.value})}
+                  onChange={e => setEditingProduct({ ...editingProduct, descripcion: e.target.value })}
                   rows={3}
                   className="w-full bg-[#23232A] text-white border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#F400A1] resize-none"
                 />
@@ -293,9 +633,9 @@ export function ProductTable({ productos, categorias }: ProductTableProps) {
 
               <div>
                 <label className="block text-sm font-medium text-gray-400 mb-1.5">Categoría</label>
-                <select 
+                <select
                   value={editingProduct.categoria_id}
-                  onChange={e => setEditingProduct({...editingProduct, categoria_id: e.target.value})}
+                  onChange={e => setEditingProduct({ ...editingProduct, categoria_id: e.target.value })}
                   className="w-full bg-[#23232A] text-white border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#F400A1]"
                 >
                   {categorias.map(cat => (
@@ -306,9 +646,9 @@ export function ProductTable({ productos, categorias }: ProductTableProps) {
 
               <div>
                 <label className="block text-sm font-medium text-gray-400 mb-1.5">Género</label>
-                <select 
+                <select
                   value={editingProduct.genero}
-                  onChange={e => setEditingProduct({...editingProduct, genero: e.target.value})}
+                  onChange={e => setEditingProduct({ ...editingProduct, genero: e.target.value })}
                   className="w-full bg-[#23232A] text-white border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#F400A1]"
                 >
                   <option value="Hombre">Hombre</option>
@@ -318,10 +658,27 @@ export function ProductTable({ productos, categorias }: ProductTableProps) {
                 </select>
               </div>
 
+              <div>
+                <label className="block text-sm font-medium text-gray-400 mb-1.5">Tipo de Talle</label>
+                <select
+                  value={editingProduct.tipo_talle}
+                  onChange={e => setEditingProduct({ ...editingProduct, tipo_talle: e.target.value })}
+                  className="w-full bg-[#23232A] text-white border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#F400A1]"
+                >
+                  <option value="unico">Talle Único</option>
+                  <option value="sin_talle">Sin Talle</option>
+                  <option value="tops">Tops (85/90, etc.)</option>
+                  <option value="estandar">Estándar (XS a XXL)</option>
+                </select>
+                <p className="text-xs text-gray-500 mt-2">
+                  Cambiar el tipo de talle no modifica las variantes ya creadas, solo afecta las opciones disponibles al agregar nuevas variantes.
+                </p>
+              </div>
+
               <div className="flex items-center gap-3 mt-4">
-                <button 
+                <button
                   type="button"
-                  onClick={() => setEditingProduct({...editingProduct, activo: !editingProduct.activo})}
+                  onClick={() => setEditingProduct({ ...editingProduct, activo: !editingProduct.activo })}
                   className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${editingProduct.activo ? 'bg-[#F400A1]' : 'bg-zinc-600'}`}
                 >
                   <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${editingProduct.activo ? 'translate-x-6' : 'translate-x-1'}`} />
@@ -330,7 +687,7 @@ export function ProductTable({ productos, categorias }: ProductTableProps) {
                   {editingProduct.activo ? 'Producto visible en catálogo' : 'Producto oculto'}
                 </span>
               </div>
-              
+
               {editStatus === 'error' && (
                 <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-sm text-red-400">
                   {editError}
@@ -339,14 +696,14 @@ export function ProductTable({ productos, categorias }: ProductTableProps) {
             </div>
 
             <div className="p-6 border-t border-white/5 flex justify-end gap-3 bg-[#1A1A20]">
-              <button 
+              <button
                 onClick={() => setEditingProduct(null)}
                 disabled={editStatus === 'saving'}
                 className="px-5 py-2.5 text-sm font-bold text-gray-300 hover:text-white transition-colors disabled:opacity-50"
               >
                 Cancelar
               </button>
-              <button 
+              <button
                 onClick={async () => {
                   setEditStatus('saving');
                   setEditError('');
@@ -355,7 +712,8 @@ export function ProductTable({ productos, categorias }: ProductTableProps) {
                     descripcion: editingProduct.descripcion,
                     categoria_id: editingProduct.categoria_id,
                     genero: editingProduct.genero,
-                    activo: editingProduct.activo
+                    tipo_talle: editingProduct.tipo_talle,
+                    activo: editingProduct.activo,
                   });
                   if (res.status === 'success') {
                     setEditStatus('success');

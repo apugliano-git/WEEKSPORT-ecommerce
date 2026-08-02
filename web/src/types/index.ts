@@ -12,6 +12,7 @@ export interface VarianteStock {
   color: string;
   cantidad: number;
   precio: number;
+  visible_en_catalogo: boolean;
 }
 
 export interface Producto {
@@ -22,6 +23,7 @@ export interface Producto {
   imagenes: string[];
   activo: boolean;
   genero?: string;
+  tipo_talle: string;
   created_at: string;
   variantes_stock?: VarianteStock[];
 }

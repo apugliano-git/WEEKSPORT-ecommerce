@@ -11,6 +11,13 @@ export default async function AdminProductosPage() {
   const { data: categoriasData } = await supabase.from('categorias').select('*')
   const categorias = categoriasData || []
 
+  // Fetch de talles por tipo ordenados
+  const { data: tallesData } = await supabase
+    .from('talles_por_tipo')
+    .select('*')
+    .order('orden', { ascending: true })
+  const tallesPorTipo = tallesData || []
+
   // Fetch de productos con join a variantes_stock
   const { data: productosData } = await supabase
     .from('productos')
@@ -32,7 +39,7 @@ export default async function AdminProductosPage() {
         <p className="text-zinc-400 mt-2 text-sm">Listado completo del catálogo y gestión de inventario.</p>
       </header>
       
-      <ProductTable productos={productos} categorias={categorias} />
+      <ProductTable productos={productos} categorias={categorias} tallesPorTipo={tallesPorTipo} />
     </div>
   )
 }

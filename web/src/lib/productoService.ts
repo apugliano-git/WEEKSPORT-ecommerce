@@ -13,6 +13,7 @@ export interface DatosProductoActualizado {
   descripcion: string;
   categoria_id: string;
   genero?: string;
+  tipo_talle: string;
   activo: boolean;
 }
 
