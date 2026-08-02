@@ -10,15 +10,21 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
   const productId = resolvedParams.id;
 
   // Fetch product
-  const { data: producto, error } = await supabase
+  const { data: productoBruto, error } = await supabase
     .from('productos')
     .select('*, variantes_stock(*)')
     .eq('id', productId)
     .single()
 
-  if (error || !producto || !producto.activo) {
+  if (error || !productoBruto || !productoBruto.activo) {
     notFound()
   }
+
+  // Filtrar variantes del producto principal
+  const producto: Producto = {
+    ...productoBruto,
+    variantes_stock: (productoBruto.variantes_stock || []).filter((v: any) => v.visible_en_catalogo)
+  };
 
   // Helper shuffle function
   function shuffleArray<T>(array: T[]): T[] {
@@ -28,6 +34,14 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
       [arr[i], arr[j]] = [arr[j], arr[i]]
     }
     return arr
+  }
+
+  // Helper para filtrar variantes
+  function filterVisibleVariants(prods: any[]): Producto[] {
+    return prods.map(prod => ({
+      ...prod,
+      variantes_stock: (prod.variantes_stock || []).filter((v: any) => v.visible_en_catalogo)
+    }));
   }
 
   let similares: Producto[] = []
@@ -43,7 +57,7 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
       .neq('id', producto.id)
       .eq('activo', true)
       .limit(15)
-    nivel1Data = (nivel1 as Producto[]) || []
+    nivel1Data = filterVisibleVariants(nivel1 || [])
   }
   
   similares = shuffleArray(nivel1Data).slice(0, 4)
@@ -60,7 +74,7 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
       .eq('activo', true)
       .limit(15)
     
-    const pool2 = shuffleArray((nivel2 as Producto[]) || [])
+    const pool2 = shuffleArray(filterVisibleVariants(nivel2 || []))
     similares = [...similares, ...pool2.slice(0, 4 - similares.length)]
   }
 
@@ -75,7 +89,7 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
       .eq('activo', true)
       .limit(15)
 
-    const pool3 = shuffleArray((nivel3 as Producto[]) || [])
+    const pool3 = shuffleArray(filterVisibleVariants(nivel3 || []))
     similares = [...similares, ...pool3.slice(0, 4 - similares.length)]
   }
 

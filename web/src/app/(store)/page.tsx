@@ -24,7 +24,13 @@ export default async function HomePage() {
     .eq('activo', true)
     .order('created_at', { ascending: false });
 
-  const productos = productosData || [];
+  const productosBrutos = productosData || [];
+  
+  // Filtrar variantes para mostrar solo las visibles en el catálogo público
+  const productos = productosBrutos.map(prod => ({
+    ...prod,
+    variantes_stock: (prod.variantes_stock || []).filter((v: any) => v.visible_en_catalogo)
+  }));
 
   return (
     <main className="flex-1 w-full flex flex-col">
