@@ -1,10 +1,12 @@
 import React from 'react'
 import Link from 'next/link'
-import { supabase } from '@/lib/supabase'
+import { createClient } from '@/lib/supabase/server'
 
 export const revalidate = 0; // Server Component dinámico
 
 export default async function AdminDashboardPage() {
+  const supabase = await createClient()
+
   // 1. Fetching directo a Supabase
   // Join relacional hacia variantes_stock
   const { data: productosData } = await supabase

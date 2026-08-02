@@ -1,10 +1,12 @@
 import React from 'react'
-import { supabase } from '@/lib/supabase'
+import { createClient } from '@/lib/supabase/server'
 import { StockManager } from '@/components/admin/StockManager'
 
 export const revalidate = 0; // Server Component dinámico
 
 export default async function AdminStockPage() {
+  const supabase = await createClient()
+
   // Fetch de categorías
   const { data: categoriasData } = await supabase.from('categorias').select('*')
   const categorias = categoriasData || []
