@@ -1,5 +1,6 @@
 'use client';
 
+import React, { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
@@ -58,56 +59,130 @@ const navLinks = [
 
 export function AdminNav() {
   const pathname = usePathname();
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   const isActive = (href: string, exact: boolean) => {
     if (exact) return pathname === href;
     return pathname.startsWith(href);
   };
 
-  return (
-    <nav className="sticky top-0 z-50 bg-zinc-950/95 backdrop-blur-md border-b border-zinc-800/60 shadow-lg shadow-black/30">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
-          {/* Brand */}
-          <Link href="/admin" className="flex items-center gap-2.5 shrink-0">
-            <span className="text-[#F400A1] font-black text-lg tracking-tight">WEEK</span>
-            <span className="text-white font-black text-lg tracking-tight">SPORT</span>
-            <span className="ml-1 text-[10px] font-bold uppercase tracking-widest text-zinc-500 border border-zinc-700 px-1.5 py-0.5 rounded">
-              Admin
-            </span>
-          </Link>
+  const currentLink = navLinks.find(link => isActive(link.href, link.exact)) || navLinks[0];
 
-          {/* Nav Links */}
-          <div className="flex items-center gap-1">
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  return (
+    <nav className="sticky top-0 z-50 bg-[#0F0F12]/95 backdrop-blur-md border-b border-white/5 shadow-lg shadow-black/30">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between h-16 gap-4">
+          
+          {/* Lado Izquierdo: Brand + Mobile Dropdown */}
+          <div className="flex items-center gap-3 relative" ref={dropdownRef}>
+            {/* Brand */}
+            <Link href="/admin" className="flex items-center gap-1 sm:gap-2.5 shrink-0" onClick={() => setIsOpen(false)}>
+              <span className="text-[#F400A1] font-black text-lg tracking-tight font-display">WEEK</span>
+              <span className="text-white font-black text-lg tracking-tight font-display">SPORT</span>
+              <span className="hidden sm:inline-block ml-1 text-[10px] font-bold uppercase tracking-widest text-gray-500 border border-white/10 px-1.5 py-0.5 rounded-lg">
+                Admin
+              </span>
+            </Link>
+
+            <div className="h-6 w-px bg-white/10 sm:hidden block"></div>
+
+            {/* Mobile Dropdown Toggle (Visible ONLY on mobile) */}
+            <button
+              onClick={() => setIsOpen(!isOpen)}
+              className={`sm:hidden flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors border ${
+                isOpen ? 'bg-white/5 border-white/10' : 'bg-transparent border-transparent hover:bg-white/5'
+              }`}
+            >
+              <span className="text-sm font-bold text-white">{currentLink.label}</span>
+              <svg 
+                xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+                className={`text-[#F400A1] transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
+              >
+                <path d="m6 9 6 6 6-6"/>
+              </svg>
+            </button>
+
+            {/* Mobile Dropdown Menu */}
+            {isOpen && (
+              <div className="sm:hidden absolute top-[60px] left-0 bg-[#1A1A20] border border-white/10 rounded-xl shadow-2xl p-2 w-64 flex flex-col gap-1 animate-fadeIn origin-top-left">
+                <div className="px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-1">
+                  Menú Principal
+                </div>
+                {navLinks.map((link) => {
+                  const active = isActive(link.href, link.exact);
+                  return (
+                    <Link
+                      key={link.href}
+                      href={link.href}
+                      onClick={() => setIsOpen(false)}
+                      className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-bold transition-all duration-200 ${
+                        active
+                          ? 'bg-[#F400A1]/15 text-[#F400A1]'
+                          : 'text-gray-300 hover:text-white hover:bg-white/5'
+                      }`}
+                    >
+                      <span className={active ? 'text-[#F400A1]' : 'text-gray-500'}>{link.icon}</span>
+                      {link.label}
+                    </Link>
+                  );
+                })}
+                <div className="h-px bg-white/5 my-1"></div>
+                <Link
+                  href="/"
+                  className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-bold text-gray-400 hover:text-white hover:bg-white/5 transition-all duration-200"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="m15 18-6-6 6-6"/>
+                  </svg>
+                  Volver a la tienda
+                </Link>
+              </div>
+            )}
+          </div>
+
+          {/* Desktop Nav Links (Visible ONLY on desktop) */}
+          <div className="hidden sm:flex items-center gap-1">
             {navLinks.map((link) => {
               const active = isActive(link.href, link.exact);
               return (
                 <Link
                   key={link.href}
                   href={link.href}
-                  className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                  className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-bold transition-all duration-200 ${
                     active
                       ? 'bg-[#F400A1]/15 text-[#F400A1] border border-[#F400A1]/25'
-                      : 'text-zinc-400 hover:text-white hover:bg-zinc-800/70 border border-transparent'
+                      : 'text-gray-400 hover:text-white hover:bg-white/5 border border-transparent'
                   }`}
                 >
-                  <span className={active ? 'text-[#F400A1]' : 'text-zinc-500'}>{link.icon}</span>
-                  <span className="hidden sm:inline">{link.label}</span>
+                  <span className={active ? 'text-[#F400A1]' : 'text-gray-500'}>{link.icon}</span>
+                  <span className="inline">{link.label}</span>
                 </Link>
               );
             })}
           </div>
 
-          {/* Acceso al catálogo público */}
+          {/* Acceso al catálogo público (Visible ONLY on desktop, since mobile has it in dropdown) */}
           <Link
             href="/"
-            className="inline-flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-300 transition-colors shrink-0"
+            className="hidden sm:inline-flex items-center gap-1.5 text-xs font-bold text-gray-400 hover:text-white transition-colors shrink-0"
           >
             <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="m15 18-6-6 6-6"/>
             </svg>
-            <span className="hidden sm:inline">Ver tienda</span>
+            <span>Ver tienda</span>
           </Link>
+
         </div>
       </div>
     </nav>

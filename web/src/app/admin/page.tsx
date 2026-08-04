@@ -81,41 +81,63 @@ export default async function AdminDashboardPage() {
           </div>
         </div>
 
-        {/* Panel de Accesos Rápidos */}
-        <section className="flex flex-col gap-4">
-          <h2 className="text-xl font-bold text-white flex items-center gap-2 px-2">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[#F400A1]"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-            Accesos Rápidos
+        {/* Módulos del Sistema */}
+        <section className="flex flex-col gap-4 mt-4">
+          <h2 className="text-xl font-bold text-white flex items-center gap-2 px-2 font-display">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[#F400A1]"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+            Módulos del Sistema
           </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <Link 
+              href="/admin/inventario/nuevo"
+              className="bg-[#1A1A20] p-6 rounded-2xl border border-white/5 shadow-lg shadow-black/50 flex flex-col gap-4 hover:bg-white/5 hover:border-white/10 transition-all group"
+            >
+              <div className="p-3 bg-[#0F0F12] rounded-xl border border-white/5 w-fit group-hover:border-[#F400A1]/50 transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[#F400A1]"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+              </div>
+              <div>
+                <span className="text-lg font-bold text-white tracking-tight block">Nuevo Producto</span>
+                <span className="text-sm text-gray-500 mt-1 block">Alta en el catálogo</span>
+              </div>
+            </Link>
+
             <Link 
               href="/admin/productos"
-              className="bg-zinc-900 p-6 rounded-2xl border border-zinc-800/50 shadow-lg shadow-black/50 flex items-center gap-4 hover:bg-zinc-800/50 hover:border-zinc-700 transition-all group"
+              className="bg-[#1A1A20] p-6 rounded-2xl border border-white/5 shadow-lg shadow-black/50 flex flex-col gap-4 hover:bg-white/5 hover:border-white/10 transition-all group"
             >
-              <div className="p-3 bg-zinc-950 rounded-xl border border-zinc-800 group-hover:border-zinc-700 transition-colors">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-400"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
+              <div className="p-3 bg-[#0F0F12] rounded-xl border border-white/5 w-fit group-hover:border-[#F400A1]/50 transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[#F400A1]"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
               </div>
-              <span className="text-lg font-bold text-white tracking-tight">Ver Productos</span>
+              <div>
+                <span className="text-lg font-bold text-white tracking-tight block">Productos</span>
+                <span className="text-sm text-gray-500 mt-1 block">Gestión de base de datos</span>
+              </div>
             </Link>
             
             <Link 
-              href="/admin/inventario/nuevo"
-              className="bg-zinc-900 p-6 rounded-2xl border border-zinc-800/50 shadow-lg shadow-black/50 flex items-center gap-4 hover:bg-zinc-800/50 hover:border-zinc-700 transition-all group"
+              href="/admin/stock"
+              className="bg-[#1A1A20] p-6 rounded-2xl border border-white/5 shadow-lg shadow-black/50 flex flex-col gap-4 hover:bg-white/5 hover:border-white/10 transition-all group"
             >
-              <div className="p-3 bg-zinc-950 rounded-xl border border-zinc-800 group-hover:border-zinc-700 transition-colors">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-400"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+              <div className="p-3 bg-[#0F0F12] rounded-xl border border-white/5 w-fit group-hover:border-[#F400A1]/50 transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[#F400A1]"><line x1="12" x2="12" y1="20" y2="10"/><line x1="18" x2="18" y1="20" y2="4"/><line x1="6" x2="6" y1="20" y2="16"/></svg>
               </div>
-              <span className="text-lg font-bold text-white tracking-tight">Nuevo Artículo</span>
+              <div>
+                <span className="text-lg font-bold text-white tracking-tight block">Stock</span>
+                <span className="text-sm text-gray-500 mt-1 block">Ajuste rápido de inventario</span>
+              </div>
             </Link>
             
             <Link 
               href="/admin/ventas"
-              className="bg-zinc-900 p-6 rounded-2xl border border-zinc-800/50 shadow-lg shadow-black/50 flex items-center gap-4 hover:bg-zinc-800/50 hover:border-zinc-700 transition-all group"
+              className="bg-[#1A1A20] p-6 rounded-2xl border border-white/5 shadow-lg shadow-black/50 flex flex-col gap-4 hover:bg-white/5 hover:border-white/10 transition-all group"
             >
-              <div className="p-3 bg-zinc-950 rounded-xl border border-zinc-800 group-hover:border-zinc-700 transition-colors">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-400"><path d="M20 6 9 17l-5-5"/></svg>
+              <div className="p-3 bg-[#0F0F12] rounded-xl border border-white/5 w-fit group-hover:border-[#F400A1]/50 transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[#F400A1]"><path d="M20 6 9 17l-5-5"/></svg>
               </div>
-              <span className="text-lg font-bold text-white tracking-tight">Validar Ventas</span>
+              <div>
+                <span className="text-lg font-bold text-white tracking-tight block">Validar Ventas</span>
+                <span className="text-sm text-gray-500 mt-1 block">Deducción de transacciones</span>
+              </div>
             </Link>
           </div>
         </section>
