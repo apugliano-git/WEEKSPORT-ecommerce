@@ -6,8 +6,10 @@ import { CartDrawer } from "@/components/cart/CartDrawer";
 
 export default function StoreLayout({
   children,
+  modal,
 }: {
   children: React.ReactNode;
+  modal: React.ReactNode;
 }) {
   return (
     <SearchProvider>
@@ -15,6 +17,7 @@ export default function StoreLayout({
         <Header />
         <CartDrawer />
         {children}
+        {modal}
         <Footer />
       </CartProvider>
     </SearchProvider>
