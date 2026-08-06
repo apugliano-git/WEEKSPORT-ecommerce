@@ -8,6 +8,7 @@ import { TableShell, Select, Input, Badge, Button, BottomSheet, Switch } from '@
 interface StockManagerProps {
   productos: Producto[];
   categorias: Categoria[];
+  initialSearch?: string;
 }
 
 function StockVariantRow({ variante }: { variante: any }) {
@@ -82,67 +83,137 @@ function StockVariantRow({ variante }: { variante: any }) {
   );
 }
 
-function MobileStockVariantItem({ variante }: { variante: any }) {
-  const [currentStock, setCurrentStock] = useState(variante.cantidad);
-  const [inputValue, setInputValue] = useState<number | ''>(variante.cantidad);
+function MobileVariantAdjust({ variante, onBack }: { variante: any, onBack: () => void }) {
+  const [ajuste, setAjuste] = useState<number>(0);
   const [status, setStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState('');
 
-  const hasChanged = inputValue !== currentStock;
-  const isInvalid = typeof inputValue === 'number' && (inputValue < 0 || isNaN(inputValue)) || inputValue === '';
-  const canSave = hasChanged && !isInvalid && status !== 'saving';
+  const currentStock = variante.cantidad;
+  const finalStock = Math.max(0, currentStock + ajuste);
+  
+  const canSave = ajuste !== 0 && status !== 'saving';
 
   const handleSave = async () => {
     if (!canSave) return;
     setStatus('saving');
     setErrorMessage('');
     
-    const numericValue = inputValue as number;
-    const res = await actualizarStockVariante(variante.id, numericValue);
+    const res = await actualizarStockVariante(variante.id, finalStock);
     
     if (res.status === 'success') {
       setStatus('success');
-      setCurrentStock(numericValue);
-      setInputValue(numericValue);
-      setTimeout(() => setStatus('idle'), 3000);
+      variante.cantidad = finalStock; // Optimistic update
+      setTimeout(() => {
+        onBack();
+      }, 1000);
     } else {
       setStatus('error');
       setErrorMessage(res.message);
     }
   }
 
-  const isCritical = currentStock < 3;
-  const isOutOfStock = currentStock === 0;
+  return (
+    <div className="flex flex-col gap-5 p-2 pb-6">
+      <button onClick={onBack} className="flex items-center gap-2 text-gray-400 hover:text-white text-sm font-semibold w-fit transition-colors">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+        Volver
+      </button>
+
+      <div className="flex flex-col items-center justify-center text-center gap-1 mt-2">
+        <h4 className="text-3xl font-bold text-white">{variante.talle}</h4>
+        <p className="text-lg text-gray-400 font-medium">{variante.color}</p>
+        <div className="mt-2">
+           <Badge variant={currentStock === 0 ? 'danger' : currentStock < 3 ? 'warning' : 'success'}>
+             Stock actual: {currentStock}
+           </Badge>
+        </div>
+      </div>
+
+      <div className="bg-[#0F0F12] border border-white/5 rounded-2xl p-6 flex flex-col items-center gap-6 mt-2 shadow-inner">
+        <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">Ajustar cantidad</p>
+        
+        <div className="flex items-center justify-center gap-8 w-full">
+          <button 
+            onClick={() => setAjuste(a => a - 1)}
+            className="w-14 h-14 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white active:bg-white/10 transition-colors"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/></svg>
+          </button>
+          
+          <div className="flex flex-col items-center justify-center min-w-[80px]">
+            <span className={`text-4xl font-black tracking-tight ${ajuste > 0 ? 'text-emerald-400' : ajuste < 0 ? 'text-red-400' : 'text-white'}`}>
+              {ajuste > 0 ? `+${ajuste}` : ajuste}
+            </span>
+          </div>
+
+          <button 
+            onClick={() => setAjuste(a => a + 1)}
+            className="w-14 h-14 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white active:bg-white/10 transition-colors"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+          </button>
+        </div>
+
+        <div className="w-full h-px bg-white/10"></div>
+
+        <div className="flex items-center justify-between w-full px-2">
+          <span className="text-sm font-medium text-gray-400">Stock resultante:</span>
+          <span className="text-2xl font-bold text-white">{finalStock}</span>
+        </div>
+      </div>
+
+      <div className="flex flex-col items-center justify-center mt-4 relative min-h-[50px]">
+        {status === 'success' && <span className="text-sm text-emerald-400 font-bold flex items-center gap-2"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg> ¡Stock actualizado!</span>}
+        {status === 'error' && <span className="text-xs text-red-400 bg-red-950/80 px-4 py-2 rounded-lg border border-red-900/50 text-center w-full">{errorMessage}</span>}
+        
+        {status !== 'success' && (
+          <Button variant="primary" className="w-full py-4 text-base font-bold shadow-lg shadow-[#F400A1]/20" onClick={handleSave} disabled={!canSave} isLoading={status === 'saving'}>
+            Confirmar Ajuste
+          </Button>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function MobileProductSheetContent({ product }: { product: Producto }) {
+  const [selectedVariant, setSelectedVariant] = useState<any | null>(null);
+
+  if (selectedVariant) {
+    return <MobileVariantAdjust variante={selectedVariant} onBack={() => setSelectedVariant(null)} />;
+  }
 
   return (
-    <div className={`flex items-center justify-between p-3 rounded-xl border border-white/5 bg-[#0F0F12] ${isCritical ? 'border-red-500/20 bg-red-500/5' : ''}`}>
-      <div className="flex flex-col">
-        <span className="text-gray-300 font-bold text-sm">{variante.talle} <span className="text-gray-500 font-normal">· {variante.color}</span></span>
-        <div className="mt-1">
-          <Badge variant={isOutOfStock ? 'danger' : isCritical ? 'warning' : 'success'} pulse={isCritical}>
-            {currentStock} uds
-          </Badge>
-        </div>
-      </div>
-      
-      <div className="flex items-center gap-3">
-        <Input
-          type="number"
-          min="0"
-          value={inputValue}
-          onChange={(e) => setInputValue(e.target.value !== '' ? parseInt(e.target.value) || 0 : '')}
-          className="w-16 text-center !py-1.5 text-sm"
-        />
-        <div className="flex flex-col items-center justify-center min-w-[60px] relative">
-          {status === 'success' && <span className="text-xs text-emerald-400 font-bold flex items-center gap-1"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg> OK</span>}
-          {status === 'error' && <span className="text-[10px] text-red-400 absolute -bottom-4 whitespace-nowrap bg-red-950/80 px-2 py-0.5 rounded border border-red-900/50">{errorMessage}</span>}
-          {status !== 'success' && (
-            <Button variant="primary" size="sm" onClick={handleSave} disabled={!canSave} isLoading={status === 'saving'}>
-              Guardar
-            </Button>
-          )}
-        </div>
-      </div>
+    <div className="flex flex-col gap-3 pb-6">
+      {product?.variantes_stock?.length === 0 ? (
+        <p className="text-sm text-gray-500 text-center py-4">Este producto no tiene variantes.</p>
+      ) : (
+        product?.variantes_stock?.map(v => {
+          const isCritical = v.cantidad < 3;
+          const isOutOfStock = v.cantidad === 0;
+          return (
+            <button
+              key={v.id}
+              onClick={() => setSelectedVariant(v)}
+              className={`flex items-center justify-between p-4 rounded-xl border border-white/5 bg-[#0F0F12] hover:border-white/10 active:bg-white/5 transition-colors text-left ${isCritical ? 'border-red-500/20 bg-red-500/5' : ''}`}
+            >
+              <div className="flex flex-col flex-1 min-w-0 mr-4">
+                <span className="text-white font-bold text-base truncate pr-2">
+                  {v.talle} <span className="text-gray-400 font-normal">· {v.color}</span>
+                </span>
+              </div>
+              <div className="shrink-0 flex items-center gap-3">
+                <Badge variant={isOutOfStock ? 'danger' : isCritical ? 'warning' : 'success'} pulse={isCritical}>
+                  {v.cantidad} uds
+                </Badge>
+                <div className="text-gray-600">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+                </div>
+              </div>
+            </button>
+          )
+        })
+      )}
     </div>
   )
 }
@@ -221,8 +292,8 @@ function StockProductRow({ product, categoryMap }: { product: Producto, category
   );
 }
 
-export function StockManager({ productos, categorias }: StockManagerProps) {
-  const [searchTerm, setSearchTerm] = useState('')
+export function StockManager({ productos, categorias, initialSearch = '' }: StockManagerProps) {
+  const [searchTerm, setSearchTerm] = useState(initialSearch)
   const [selectedCategoryId, setSelectedCategoryId] = useState('')
   const [selectedProduct, setSelectedProduct] = useState<Producto | null>(null)
   const [hideOutOfStock, setHideOutOfStock] = useState(false)
@@ -300,11 +371,19 @@ export function StockManager({ productos, categorias }: StockManagerProps) {
           placeholder="Buscar por producto, talle o color..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full sm:w-80 pl-10"
+          className="w-full sm:w-80 pl-10 pr-10"
         />
         <span className="absolute left-3 top-3 text-gray-500">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
         </span>
+        {searchTerm && (
+          <button
+            onClick={() => setSearchTerm('')}
+            className="absolute right-3 top-3.5 text-gray-500 hover:text-white transition-colors"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+          </button>
+        )}
       </div>
     </>
   );
@@ -376,15 +455,7 @@ export function StockManager({ productos, categorias }: StockManagerProps) {
         onClose={() => setSelectedProduct(null)}
         title={selectedProduct?.nombre || ''}
       >
-        <div className="flex flex-col gap-3">
-          {selectedProduct?.variantes_stock?.length === 0 ? (
-            <p className="text-sm text-gray-500 text-center py-4">Este producto no tiene variantes.</p>
-          ) : (
-            selectedProduct?.variantes_stock?.map(v => (
-              <MobileStockVariantItem key={v.id} variante={v} />
-            ))
-          )}
-        </div>
+        {selectedProduct && <MobileProductSheetContent product={selectedProduct} />}
       </BottomSheet>
     </>
   )

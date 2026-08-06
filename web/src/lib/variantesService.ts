@@ -44,7 +44,6 @@ export async function crearVariante(
 export interface DatosVarianteActualizada {
   talle?: string;
   color?: string;
-  cantidad?: number;
   precio?: number;
   visible_en_catalogo?: boolean;
 }

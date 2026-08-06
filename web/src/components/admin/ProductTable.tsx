@@ -25,19 +25,21 @@ interface ProductTableProps {
 function VarianteRow({
   variante,
   tallesDisponibles,
+  productoNombre,
   onRefresh,
 }: {
   variante: VarianteStock;
   tallesDisponibles: string[];
+  productoNombre: string;
   onRefresh: () => void;
 }) {
+  const router = useRouter();
   const [isEditing, setIsEditing] = useState(false);
   const [status, setStatus] = useState<'idle' | 'saving' | 'error'>('idle');
   const [errorMsg, setErrorMsg] = useState('');
 
   const [talle, setTalle] = useState(variante.talle);
   const [color, setColor] = useState(variante.color);
-  const [cantidad, setCantidad] = useState(variante.cantidad);
   const [precio, setPrecio] = useState(variante.precio);
   const [visible, setVisible] = useState(variante.visible_en_catalogo);
 
@@ -47,7 +49,6 @@ function VarianteRow({
   const handleCancel = () => {
     setTalle(variante.talle);
     setColor(variante.color);
-    setCantidad(variante.cantidad);
     setPrecio(variante.precio);
     setVisible(variante.visible_en_catalogo);
     setStatus('idle');
@@ -58,7 +59,7 @@ function VarianteRow({
   const handleSave = async () => {
     setStatus('saving');
     setErrorMsg('');
-    const res = await actualizarVariante(variante.id, { talle, color, cantidad, precio, visible_en_catalogo: visible });
+    const res = await actualizarVariante(variante.id, { talle, color, precio, visible_en_catalogo: visible });
     if (res.status === 'success') {
       setIsEditing(false);
       setStatus('idle');
@@ -114,13 +115,19 @@ function VarianteRow({
             />
           </td>
           <td className="px-3 py-2 text-center">
-            <input
-              type="number"
-              min="0"
-              value={cantidad}
-              onChange={e => setCantidad(Number(e.target.value))}
-              className="w-16 bg-[#0F0F12] text-white border border-white/10 rounded-lg px-2 py-1 text-xs text-center focus:outline-none focus:ring-1 focus:ring-[#F400A1]"
-            />
+            <div className="flex flex-col items-center gap-1.5">
+              <Badge variant={isOutOfStock ? 'danger' : isCritical ? 'warning' : 'success'} pulse={isCritical}>
+                {variante.cantidad} uds
+              </Badge>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => router.push(`/admin/stock?buscar=${encodeURIComponent(productoNombre)}`)}
+                className="px-2 py-0.5 h-auto text-[10px]"
+              >
+                Ver en Stock
+              </Button>
+            </div>
           </td>
           <td className="px-3 py-2 text-center">
             <button
@@ -432,6 +439,7 @@ function ProductRow({
                         key={v.id}
                         variante={v}
                         tallesDisponibles={tallesDisponibles}
+                        productoNombre={product.nombre}
                         onRefresh={onRefresh}
                       />
                     ))}
@@ -470,18 +478,20 @@ function ProductRow({
 function MobileVarianteItem({
   variante,
   tallesDisponibles,
+  productoNombre,
   onRefresh,
 }: {
   variante: VarianteStock;
   tallesDisponibles: string[];
+  productoNombre: string;
   onRefresh: () => void;
 }) {
+  const router = useRouter();
   const [isEditing, setIsEditing] = useState(false);
   const [status, setStatus] = useState<'idle' | 'saving' | 'error'>('idle');
   const [errorMsg, setErrorMsg] = useState('');
   const [talle, setTalle] = useState(variante.talle);
   const [color, setColor] = useState(variante.color);
-  const [cantidad, setCantidad] = useState(variante.cantidad);
   const [precio, setPrecio] = useState(variante.precio);
   const [visible, setVisible] = useState(variante.visible_en_catalogo);
 
@@ -490,14 +500,14 @@ function MobileVarianteItem({
 
   const handleCancel = () => {
     setTalle(variante.talle); setColor(variante.color);
-    setCantidad(variante.cantidad); setPrecio(variante.precio);
+    setPrecio(variante.precio);
     setVisible(variante.visible_en_catalogo);
     setStatus('idle'); setErrorMsg(''); setIsEditing(false);
   };
 
   const handleSave = async () => {
     setStatus('saving'); setErrorMsg('');
-    const res = await actualizarVariante(variante.id, { talle, color, cantidad, precio, visible_en_catalogo: visible });
+    const res = await actualizarVariante(variante.id, { talle, color, precio, visible_en_catalogo: visible });
     if (res.status === 'success') { setIsEditing(false); setStatus('idle'); onRefresh(); }
     else { setStatus('error'); setErrorMsg(res.message); }
   };
@@ -526,8 +536,19 @@ function MobileVarianteItem({
           </div>
           <div>
             <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1 block">Stock</label>
-            <input type="number" min="0" value={cantidad} onChange={e => setCantidad(Number(e.target.value))}
-              className="w-full bg-[#0F0F12] text-white border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-[#F400A1]" />
+            <div className="flex items-center justify-between bg-[#0F0F12] border border-white/10 rounded-lg px-3 py-1.5 min-h-[38px]">
+              <Badge variant={isOutOfStock ? 'danger' : isCritical ? 'warning' : 'success'} pulse={isCritical}>
+                {variante.cantidad} uds
+              </Badge>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => router.push(`/admin/stock?buscar=${encodeURIComponent(productoNombre)}`)}
+                className="px-2 py-1 h-auto text-[10px]"
+              >
+                Ver en Stock
+              </Button>
+            </div>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -661,7 +682,7 @@ function MobileProductSheet({
         <p className="text-sm text-gray-500 text-center py-4">Este producto no tiene variantes.</p>
       ) : (
         variants.map(v => (
-          <MobileVarianteItem key={v.id} variante={v} tallesDisponibles={tallesDisponibles} onRefresh={onRefresh} />
+          <MobileVarianteItem key={v.id} variante={v} tallesDisponibles={tallesDisponibles} productoNombre={product.nombre} onRefresh={onRefresh} />
         ))
       )}
 
@@ -794,10 +815,18 @@ export function ProductTable({ productos, categorias, tallesPorTipo }: ProductTa
             </select>
             <div className="relative">
               <input type="text" placeholder="Buscar por nombre, talle o color..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full sm:w-80 bg-[#23232A] text-white placeholder-gray-500 border border-white/10 rounded-xl px-4 py-2.5 pl-10 text-sm focus:outline-none focus:ring-2 focus:ring-[#F400A1] transition-shadow" />
+                className="w-full sm:w-80 bg-[#23232A] text-white placeholder-gray-500 border border-white/10 rounded-xl py-2.5 pl-10 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-[#F400A1] transition-shadow" />
               <span className="absolute left-3 top-3 text-gray-500">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
               </span>
+              {searchTerm && (
+                <button
+                  onClick={() => setSearchTerm('')}
+                  className="absolute right-3 top-3 text-gray-500 hover:text-white transition-colors"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                </button>
+              )}
             </div>
           </div>
         </div>

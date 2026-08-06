@@ -4,8 +4,15 @@ import { StockManager } from '@/components/admin/StockManager'
 
 export const revalidate = 0; // Server Component dinámico
 
-export default async function AdminStockPage() {
+export default async function AdminStockPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>
+}) {
   const supabase = await createClient()
+  
+  const params = await searchParams
+  const buscar = typeof params.buscar === 'string' ? params.buscar : ''
 
   // Fetch de categorías
   const { data: categoriasData } = await supabase.from('categorias').select('*')
@@ -32,7 +39,7 @@ export default async function AdminStockPage() {
         <p className="text-zinc-400 mt-2 text-sm">Ajuste rápido de cantidades para variantes individuales.</p>
       </header>
       
-      <StockManager productos={productos} categorias={categorias} />
+      <StockManager productos={productos} categorias={categorias} initialSearch={buscar} />
     </div>
   )
 }
