@@ -3,8 +3,15 @@ import { supabase } from '@/lib/supabase';
 
 // --- Interfaces de Tipado ---
 export interface VentaItem {
-  variante_id: string; // O number según tu DDL
+  variante_id: string;
   cantidad: number;
+  // Snapshot al momento de la venta — opcional para no romper
+  // compatibilidad con ventas históricas que no lo tienen:
+  nombre_producto?: string;
+  talle?: string;
+  color?: string;
+  precio_unitario?: number;
+  subtotal?: number;
 }
 
 export interface ProcesarVentaResponse {

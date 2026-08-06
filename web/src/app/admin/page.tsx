@@ -1,31 +1,13 @@
 import React from 'react'
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase/server'
+import { obtenerMetricasInventario, obtenerVentasRecientes } from '@/lib/dashboardService'
+import { UltimasVentas } from '@/components/admin/UltimasVentas'
 
 export const revalidate = 0; // Server Component dinámico
 
 export default async function AdminDashboardPage() {
-  const supabase = await createClient()
-
-  // 1. Fetching directo a Supabase
-  // Join relacional hacia variantes_stock
-  const { data: productosData } = await supabase
-    .from('productos')
-    .select(`
-      *,
-      variantes_stock (*)
-    `)
-    .order('created_at', { ascending: false })
-  
-  const productos = productosData || []
-
-  // 2. Cálculo de Métricas Administrativas
-  // - Conteo total de Productos Activos
-  const activeProducts = productos.filter((p: any) => p.activo).length
-
-  // - Conteo de variantes agotadas (cantidad = 0)
-  const allVariants = productos.flatMap((p: any) => p.variantes_stock || [])
-  const outOfStockVariants = allVariants.filter((v: any) => v.cantidad === 0).length
+  const metricas = await obtenerMetricasInventario();
+  const ventasRecientes = await obtenerVentasRecientes(5);
   return (
     <div className="space-y-10">
         
@@ -57,29 +39,42 @@ export default async function AdminDashboardPage() {
         </header>
 
         {/* Tarjetas de Métricas - Bordes ultra suavizados (rounded-2xl) */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="bg-zinc-900 p-6 rounded-2xl border border-zinc-800/50 flex flex-col shadow-lg shadow-black/50 relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 blur-3xl rounded-full z-0 pointer-events-none" />
-            <span className="text-zinc-500 text-xs font-bold uppercase tracking-wider mb-3">Productos Activos</span>
-            <div className="flex items-center gap-4 relative z-10">
-              <div className="p-3 bg-zinc-950 rounded-xl border border-zinc-800">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-emerald-500"><path d="M20 6 9 17l-5-5"/></svg>
-              </div>
-              <span className="text-5xl font-extrabold text-white tracking-tighter">{activeProducts}</span>
+        <section className="flex flex-col gap-4 mt-6">
+          <h2 className="text-xl font-bold text-white flex items-center gap-2 px-2 font-display">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[#F400A1]"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+            Métricas del Mes
+          </h2>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+            <div className="bg-[#1A1A20] p-4 sm:p-6 rounded-2xl border border-white/5 flex flex-col shadow-lg shadow-black/50">
+              <span className="text-zinc-500 text-[10px] sm:text-xs font-bold uppercase tracking-wider mb-2">Productos Activos</span>
+              <span className="text-3xl sm:text-4xl font-extrabold text-white tracking-tighter">{metricas.productosActivos}</span>
+            </div>
+            
+            <div className={`bg-[#1A1A20] p-4 sm:p-6 rounded-2xl border flex flex-col shadow-lg shadow-black/50 transition-colors ${metricas.productosSinStock > 0 ? 'border-red-500/50 bg-red-500/5' : 'border-white/5'}`}>
+              <span className={`text-[10px] sm:text-xs font-bold uppercase tracking-wider mb-2 ${metricas.productosSinStock > 0 ? 'text-red-400' : 'text-zinc-500'}`}>Productos sin stock</span>
+              <span className={`text-3xl sm:text-4xl font-extrabold tracking-tighter ${metricas.productosSinStock > 0 ? 'text-red-400' : 'text-white'}`}>{metricas.productosSinStock}</span>
+            </div>
+
+            <div className={`bg-[#1A1A20] p-4 sm:p-6 rounded-2xl border flex flex-col shadow-lg shadow-black/50 transition-colors ${metricas.variantesCriticas > 0 ? 'border-amber-500/50 bg-amber-500/5' : 'border-white/5'}`}>
+              <span className={`text-[10px] sm:text-xs font-bold uppercase tracking-wider mb-2 ${metricas.variantesCriticas > 0 ? 'text-amber-400' : 'text-zinc-500'}`}>Variantes Críticas (&lt;3)</span>
+              <span className={`text-3xl sm:text-4xl font-extrabold tracking-tighter ${metricas.variantesCriticas > 0 ? 'text-amber-400' : 'text-white'}`}>{metricas.variantesCriticas}</span>
+            </div>
+
+            <div className="bg-[#1A1A20] p-4 sm:p-6 rounded-2xl border border-white/5 flex flex-col shadow-lg shadow-black/50">
+              <span className="text-zinc-500 text-[10px] sm:text-xs font-bold uppercase tracking-wider mb-2">Ventas del Mes</span>
+              <span className="text-3xl sm:text-4xl font-extrabold text-white tracking-tighter">{metricas.ventasDelMes}</span>
             </div>
           </div>
-          
-          <div className="bg-zinc-900 p-6 rounded-2xl border border-zinc-800/50 flex flex-col shadow-lg shadow-black/50 relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-red-500/5 blur-3xl rounded-full z-0 pointer-events-none" />
-            <span className="text-zinc-500 text-xs font-bold uppercase tracking-wider mb-3">Variantes Agotadas</span>
-            <div className="flex items-center gap-4 relative z-10">
-              <div className="p-3 bg-zinc-950 rounded-xl border border-zinc-800">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-red-500"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg>
-              </div>
-              <span className="text-5xl font-extrabold text-white tracking-tighter">{outOfStockVariants}</span>
-            </div>
-          </div>
-        </div>
+        </section>
+
+        {/* Últimas ventas */}
+        <section className="flex flex-col gap-4 mt-6">
+          <h2 className="text-xl font-bold text-white flex items-center gap-2 px-2 font-display">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[#F400A1]"><path d="M3 9h18v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9Z"/><path d="m3 9 2.45-4.9A2 2 0 0 1 7.24 3h9.52a2 2 0 0 1 1.8 1.1L21 9"/><path d="M12 3v6"/></svg>
+            Últimas Ventas
+          </h2>
+          <UltimasVentas ventas={ventasRecientes} />
+        </section>
 
         {/* Módulos del Sistema */}
         <section className="flex flex-col gap-4 mt-4">
