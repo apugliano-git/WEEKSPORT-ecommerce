@@ -1,7 +1,20 @@
 import React from 'react'
 import Link from 'next/link'
+import { createClient } from '@/lib/supabase/server'
 
-export function Footer() {
+export async function Footer() {
+  const supabase = await createClient();
+  const { data: config } = await supabase.from('configuracion_sitio').select('*').eq('id', 1).single();
+
+  const envio_gratis_texto = config?.envio_gratis_texto || 'Envío gratis hasta 3km del local';
+  const medios_pago_texto = config?.medios_pago_texto || 'Efectivo, transferencia, tarjeta de débito y crédito';
+  const direccion = config?.direccion || 'Triunvirato 1194, esq. Vélez Sarsfield. Quilmes Oeste';
+  const instagram_handle = config?.instagram_handle || 'weeksport_';
+  const telefono_whatsapp = config?.telefono_whatsapp || '+54 9 11 XXXX-XXXX';
+  const email_contacto = config?.email_contacto || 'weeksport1310@gmail.com';
+  const texto_legal = config?.texto_legal || 'La presente página es solo a título informativo. Para formalizar la compra usted será redirigido al contacto del vendedor una vez seleccionados los productos.';
+  const copyright_anio = config?.copyright_anio || '2026';
+
   return (
     <footer className="bg-[#1A1A20] border-t border-white/5 w-full">
       <div className="max-w-7xl mx-auto py-16 px-4 sm:px-6 lg:px-8">
@@ -19,7 +32,7 @@ export function Footer() {
             </div>
             <h4 className="font-display uppercase tracking-wide text-sm text-white mb-2">Envío</h4>
             <p className="font-sans text-gray-400 text-sm max-w-[150px]">
-              Envío gratis hasta 3km del local
+              {envio_gratis_texto}
             </p>
           </div>
 
@@ -34,7 +47,7 @@ export function Footer() {
             </div>
             <h4 className="font-display uppercase tracking-wide text-sm text-white mb-2">Medios de pago</h4>
             <p className="font-sans text-gray-400 text-sm max-w-[150px]">
-              Efectivo, transferencia, tarjeta de débito y crédito
+              {medios_pago_texto}
             </p>
           </div>
 
@@ -48,7 +61,7 @@ export function Footer() {
             </div>
             <h4 className="font-display uppercase tracking-wide text-sm text-white mb-2">Ubicación</h4>
             <p className="font-sans text-gray-400 text-sm max-w-[160px]">
-              Triunvirato 1194, esq. Vélez Sarsfield. Quilmes Oeste
+              {direccion}
             </p>
           </div>
 
@@ -63,26 +76,26 @@ export function Footer() {
             <h4 className="font-display uppercase tracking-wide text-sm text-white mb-2">Contacto</h4>
             <div className="flex flex-col font-sans text-gray-400 text-sm gap-1">
               <Link 
-                href="https://www.instagram.com/weeksport_/" 
+                href={`https://www.instagram.com/${instagram_handle}/`}
                 target="_blank" 
                 rel="noopener noreferrer"
                 className="hover:text-[#F400A1] transition-colors"
               >
-                Instagram: weeksport_
+                Instagram: {instagram_handle}
               </Link>
               <a 
-                href="https://wa.me/54911XXXXXXXX" 
+                href={`https://wa.me/${telefono_whatsapp.replace(/\D/g, '')}`} 
                 target="_blank"
                 rel="noopener noreferrer"
                 className="hover:text-[#F400A1] transition-colors"
               >
-                Tel: +54 9 11 XXXX-XXXX
+                Tel: {telefono_whatsapp}
               </a>
               <a 
-                href="mailto:weeksport1310@gmail.com" 
+                href={`mailto:${email_contacto}`} 
                 className="hover:text-[#F400A1] transition-colors"
               >
-                weeksport1310@gmail.com
+                {email_contacto}
               </a>
             </div>
           </div>
@@ -102,10 +115,10 @@ export function Footer() {
         {/* Aviso Legal y Copyright */}
         <div className="mt-16 pt-6 border-t border-white/5 text-center flex flex-col gap-2">
           <p className="font-sans text-[10px] text-gray-600 max-w-2xl mx-auto leading-relaxed">
-            La presente página es solo a título informativo. Para formalizar la compra usted será redirigido al contacto del vendedor una vez seleccionados los productos.
+            {texto_legal}
           </p>
           <p className="font-sans text-[10px] text-gray-600">
-            &copy; 2026. Todos los derechos reservados.
+            &copy; {copyright_anio}. Todos los derechos reservados.
           </p>
         </div>
       </div>

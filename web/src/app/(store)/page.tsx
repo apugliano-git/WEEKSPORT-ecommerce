@@ -4,6 +4,13 @@ import { Suspense } from "react";
 export const revalidate = 0; // Evitar caché estática para reflejar cambios en tiempo real
 
 export default async function HomePage() {
+  // 0. Obtener Configuración
+  const { data: config } = await supabase
+    .from('configuracion_sitio')
+    .select('*')
+    .eq('id', 1)
+    .single();
+
   // 1. Obtener Categorías
   const { data: categoriasData } = await supabase
     .from('categorias')
@@ -35,7 +42,7 @@ export default async function HomePage() {
   return (
     <main className="flex-1 w-full flex flex-col">
       <Suspense fallback={<div className="flex-1 w-full flex items-center justify-center">Cargando catálogo...</div>}>
-        <StoreClient productos={productos} categorias={categorias} />
+        <StoreClient productos={productos} categorias={categorias} config={config} />
       </Suspense>
     </main>
   );
