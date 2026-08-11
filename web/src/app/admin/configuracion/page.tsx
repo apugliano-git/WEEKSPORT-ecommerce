@@ -17,12 +17,15 @@ export default function ConfiguracionPage() {
     hero_titulo: '',
     hero_subtitulo: '',
     hero_descripcion: '',
-    hero_imagen_url: ''
+    hero_imagen_url: '',
+    hero_imagen_url_mobile: '',
+    hero_imagen_posicion_mobile: 50
   });
 
   const [isLoading, setIsLoading] = useState(false);
   const [isFetching, setIsFetching] = useState(true);
   const [isUploadingHero, setIsUploadingHero] = useState(false);
+  const [isUploadingHeroMobile, setIsUploadingHeroMobile] = useState(false);
   const [mensaje, setMensaje] = useState<{ tipo: 'success' | 'error'; texto: string } | null>(null);
 
   useEffect(() => {
@@ -50,7 +53,9 @@ export default function ConfiguracionPage() {
             hero_titulo: data.hero_titulo || '',
             hero_subtitulo: data.hero_subtitulo || '',
             hero_descripcion: data.hero_descripcion || '',
-            hero_imagen_url: data.hero_imagen_url || ''
+            hero_imagen_url: data.hero_imagen_url || '',
+            hero_imagen_url_mobile: data.hero_imagen_url_mobile || '',
+            hero_imagen_posicion_mobile: data.hero_imagen_posicion_mobile ?? 50
           });
         }
       } catch (err) {
@@ -81,6 +86,23 @@ export default function ConfiguracionPage() {
         setMensaje({ tipo: 'error', texto: res.error });
       } else if (res.url) {
         setConfig(prev => ({ ...prev, hero_imagen_url: res.url as string }));
+      }
+    }
+  };
+
+  const handleHeroMobileImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const file = e.target.files[0];
+      setIsUploadingHeroMobile(true);
+      setMensaje(null);
+      
+      const res = await subirImagenProducto(file);
+      setIsUploadingHeroMobile(false);
+      
+      if (res.error) {
+        setMensaje({ tipo: 'error', texto: res.error });
+      } else if (res.url) {
+        setConfig(prev => ({ ...prev, hero_imagen_url_mobile: res.url as string }));
       }
     }
   };
@@ -236,7 +258,7 @@ export default function ConfiguracionPage() {
             }`}>
               <label className="block text-sm font-medium text-zinc-400 mb-2 flex items-center gap-2">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
-                {isUploadingHero ? 'Procesando Medios (CDN)...' : 'Subir Nueva Imagen de Fondo (Max 5MB)'}
+                {isUploadingHero ? 'Procesando Medios (CDN)...' : 'Subir Nueva Imagen de Fondo Desktop (Max 5MB)'}
               </label>
               <input 
                 type="file" 
@@ -248,12 +270,55 @@ export default function ConfiguracionPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-zinc-400 mb-1.5">URL de la Imagen de Fondo (Fallback manual)</label>
+              <label className="block text-sm font-medium text-zinc-400 mb-1.5">URL de la Imagen de Fondo Desktop (Fallback manual)</label>
               <input 
                 type="text" name="hero_imagen_url" value={config.hero_imagen_url} onChange={handleChange}
                 className="w-full p-3 bg-zinc-950 border border-zinc-800 rounded-xl focus:ring-1 focus:ring-[#F400A1] focus:border-[#F400A1] outline-none transition-colors"
                 placeholder="https://..."
               />
+            </div>
+
+            <div className={`p-4 border rounded-xl transition-all mt-4 ${
+              isUploadingHeroMobile ? 'bg-zinc-800/30 border-[#F400A1]/50 animate-pulse' : 'bg-zinc-950 border-zinc-800'
+            }`}>
+              <label className="block text-sm font-medium text-zinc-400 mb-2 flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" x2="12.01" y1="18" y2="18"/></svg>
+                {isUploadingHeroMobile ? 'Procesando Medios (CDN)...' : 'Subir Nueva Imagen de Fondo Mobile (Max 5MB)'}
+              </label>
+              <input 
+                type="file" 
+                accept="image/*"
+                onChange={handleHeroMobileImageChange}
+                disabled={isLoading || isUploadingHeroMobile}
+                className="w-full text-sm text-zinc-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-zinc-800 file:text-zinc-300 hover:file:bg-zinc-700 transition-all disabled:opacity-50 cursor-pointer"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-zinc-400 mb-1.5">URL de la Imagen de Fondo Mobile (Fallback manual)</label>
+              <input 
+                type="text" name="hero_imagen_url_mobile" value={config.hero_imagen_url_mobile} onChange={handleChange}
+                className="w-full p-3 bg-zinc-950 border border-zinc-800 rounded-xl focus:ring-1 focus:ring-[#F400A1] focus:border-[#F400A1] outline-none transition-colors"
+                placeholder="https://..."
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-zinc-400 mb-1.5 flex justify-between">
+                <span>Posición Horizontal Mobile (X-Axis)</span>
+                <span className="text-[#F400A1] font-bold">{config.hero_imagen_posicion_mobile}%</span>
+              </label>
+              <input 
+                type="range" name="hero_imagen_posicion_mobile" min="0" max="100" 
+                value={config.hero_imagen_posicion_mobile} 
+                onChange={(e) => setConfig(prev => ({ ...prev, hero_imagen_posicion_mobile: Number(e.target.value) }))}
+                className="w-full accent-[#F400A1] h-2 bg-zinc-800 rounded-lg appearance-none cursor-pointer"
+              />
+              <div className="flex justify-between text-[10px] text-zinc-500 mt-1 uppercase font-bold tracking-wider">
+                <span>Izquierda (0%)</span>
+                <span>Centro (50%)</span>
+                <span>Derecha (100%)</span>
+              </div>
             </div>
 
             {/* PREVIEW SECTIONS */}
@@ -298,9 +363,9 @@ export default function ConfiguracionPage() {
                     <div 
                       className="relative w-[220px] sm:w-[280px] aspect-[9/16] rounded-[2rem] overflow-hidden bg-zinc-950 border-[6px] border-zinc-800 flex flex-col justify-end shadow-2xl"
                       style={{ 
-                        backgroundImage: `url(${config.hero_imagen_url || 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?q=80&w=2070&auto=format&fit=crop'})`,
+                        backgroundImage: `url(${config.hero_imagen_url_mobile || config.hero_imagen_url || 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?q=80&w=2070&auto=format&fit=crop'})`,
                         backgroundSize: 'cover',
-                        backgroundPosition: 'center'
+                        backgroundPosition: `${config.hero_imagen_posicion_mobile}% center`
                       }}
                     >
                       <div className="absolute inset-0 bg-gradient-to-t from-[#0F0F12] via-[#0F0F12]/70 to-transparent pointer-events-none" />

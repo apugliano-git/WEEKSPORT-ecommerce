@@ -7,20 +7,41 @@ interface HeroBannerProps {
   heroSubtitulo?: string
   heroDescripcion?: string
   heroImagenUrl?: string
+  heroImagenUrlMobile?: string
+  heroImagenPosicionMobile?: number
 }
 
-export function HeroBanner({ heroTitulo, heroSubtitulo, heroDescripcion, heroImagenUrl }: HeroBannerProps) {
+export function HeroBanner({ 
+  heroTitulo, 
+  heroSubtitulo, 
+  heroDescripcion, 
+  heroImagenUrl,
+  heroImagenUrlMobile,
+  heroImagenPosicionMobile = 50 
+}: HeroBannerProps) {
+  
+  const bgDesktop = heroImagenUrl || 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?q=80&w=2070&auto=format&fit=crop';
+  const bgMobile = heroImagenUrlMobile || bgDesktop;
+
   return (
     <section className="relative w-full h-[65vh] min-h-[480px] max-h-[720px] overflow-hidden bg-gradient-to-br from-[#1a0014] via-[#0F0F12] to-[#0a0a12] border-b border-white/5 flex flex-col justify-end">
       {/* Glow blob fucsia blur */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-[#F400A1]/10 blur-[120px] rounded-full pointer-events-none" />
       
-      {/* Background Image (if any) or Placeholder */}
+      {/* Background Image - Desktop */}
       <div 
-        className="absolute inset-0 bg-cover bg-center"
-        style={{ backgroundImage: `url(${heroImagenUrl || 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?q=80&w=2070&auto=format&fit=crop'})` }}
+        className="absolute inset-0 bg-cover bg-center hidden md:block"
+        style={{ backgroundImage: `url(${bgDesktop})` }}
       />
-      {/* PLACEHOLDER: reemplazar por imagen real subida por el admin */}
+      
+      {/* Background Image - Mobile */}
+      <div 
+        className="absolute inset-0 bg-cover md:hidden"
+        style={{ 
+          backgroundImage: `url(${bgMobile})`,
+          backgroundPosition: `${heroImagenPosicionMobile}% center` 
+        }}
+      />
 
       {/* Overlay */}
       <div className="absolute inset-0 bg-gradient-to-t from-[#0F0F12]/90 via-[#0F0F12]/60 to-transparent pointer-events-none" />
