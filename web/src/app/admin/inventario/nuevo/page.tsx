@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { crearArticuloCompleto, subirImagenProducto } from '@/lib/inventarioService';
+import { createClient } from '@/lib/supabase/client';
 
 export default function NuevoArticuloPage() {
   // Estado base del producto
@@ -21,6 +22,28 @@ export default function NuevoArticuloPage() {
   // Estados de interfaz y feedback
   const [isLoading, setIsLoading] = useState(false);
   const [mensaje, setMensaje] = useState<{ tipo: 'success' | 'error'; texto: string } | null>(null);
+
+  const [categorias, setCategorias] = useState<{ id: string; nombre: string }[]>([]);
+  const [errorCategorias, setErrorCategorias] = useState('');
+
+  useEffect(() => {
+    const fetchCategorias = async () => {
+      try {
+        const supabase = createClient();
+        const { data, error } = await supabase.from('categorias').select('id, nombre').order('nombre');
+        if (error) {
+          setErrorCategorias('Error al cargar categorías');
+          console.error(error);
+        } else {
+          setCategorias(data || []);
+        }
+      } catch (err) {
+        setErrorCategorias('Error al cargar categorías');
+        console.error(err);
+      }
+    };
+    fetchCategorias();
+  }, []);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
@@ -121,14 +144,21 @@ export default function NuevoArticuloPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-zinc-400 mb-1.5">Categoría ID (UUID) *</label>
-              <input 
-                type="text" 
-                className="w-full p-3 bg-zinc-950 border border-zinc-800 rounded-xl focus:ring-1 focus:ring-[#F400A1] focus:border-[#F400A1] outline-none transition-colors"
-                value={categoriaId}
-                onChange={(e) => setCategoriaId(e.target.value)}
-                placeholder="ID relacional"
-              />
+              <label className="block text-sm font-medium text-zinc-400 mb-1.5">Categoría *</label>
+              {errorCategorias ? (
+                <div className="text-red-400 text-sm mb-2">{errorCategorias}</div>
+              ) : (
+                <select 
+                  className="w-full p-3 bg-zinc-950 border border-zinc-800 rounded-xl focus:ring-1 focus:ring-[#F400A1] focus:border-[#F400A1] outline-none transition-colors appearance-none"
+                  value={categoriaId}
+                  onChange={(e) => setCategoriaId(e.target.value)}
+                >
+                  <option value="" disabled>Seleccioná una categoría</option>
+                  {categorias.map(cat => (
+                    <option key={cat.id} value={cat.id}>{cat.nombre}</option>
+                  ))}
+                </select>
+              )}
             </div>
 
             <div>
