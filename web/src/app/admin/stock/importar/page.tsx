@@ -48,6 +48,7 @@ type Step = 'idle' | 'review' | 'importing' | 'done'
 interface ImportSummary {
   productosCreados: number
   variantesCreadas: number
+  variantesActualizadas: number
   errores: string[]
 }
 
@@ -247,6 +248,7 @@ export default function ImportarStockPage() {
 
     let productosCreados = 0
     let variantesCreadas = 0
+    let variantesActualizadas = 0
     const errores: string[] = []
 
     for (let i = 0; i < productos.length; i++) {
@@ -256,7 +258,7 @@ export default function ImportarStockPage() {
         // 1. Buscar si ya existe el producto
         const { data: existente, error: buscarError } = await supabase
           .from('productos')
-          .select('id')
+          .select('id, variantes_stock(talle, color)')
           .eq('nombre', grupo.producto)
           .eq('categoria_id', grupo.categoriaId!)
           .maybeSingle()
@@ -264,9 +266,15 @@ export default function ImportarStockPage() {
         if (buscarError) throw buscarError
 
         let productoId: string
+        const variantesExistentes = new Set<string>()
 
         if (existente) {
           productoId = existente.id
+          if (existente.variantes_stock) {
+            existente.variantes_stock.forEach((v: any) => {
+              variantesExistentes.add(`${(v.talle ?? '').trim()}__${(v.color ?? '').trim()}`)
+            })
+          }
         } else {
           const { data: nuevo, error: insertError } = await supabase
             .from('productos')
@@ -287,26 +295,44 @@ export default function ImportarStockPage() {
           productosCreados++
         }
 
-        // 2. Insertar variantes en lotes de 50
-        const variantesPayload = grupo.variantes.map(row => ({
-          producto_id: productoId,
-          talle: (row['Talle'] ?? '').trim(),
-          color: (row['Color'] ?? '').trim(),
-          cantidad: parseInt(row['Cantidad'] ?? '0', 10) || 0,
-          precio: parseNum(row['Precio Venta']),
-          precio_efectivo: parseNum(row['Precio Efectivo']),
-          precio_tarjeta1: parseNum(row['Precio Tarjeta 1']),
-          precio_tarjeta2y3: parseNum(row['Precio Tarjeta 2y3']),
-          visible_en_catalogo: (row['Visible Catálogo'] ?? '').trim().toLowerCase() === 'true',
-        }))
+        // 2. Insertar o actualizar variantes en lotes de 50
+        let creadasEnEsteProducto = 0
+        let actualizadasEnEsteProducto = 0
+
+        const variantesPayload = grupo.variantes.map(row => {
+          const talle = (row['Talle'] ?? '').trim()
+          const color = (row['Color'] ?? '').trim()
+          
+          if (variantesExistentes.has(`${talle}__${color}`)) {
+            actualizadasEnEsteProducto++
+          } else {
+            creadasEnEsteProducto++
+          }
+
+          return {
+            producto_id: productoId,
+            talle,
+            color,
+            cantidad: parseInt(row['Cantidad'] ?? '0', 10) || 0,
+            precio: parseNum(row['Precio Venta']),
+            precio_efectivo: parseNum(row['Precio Efectivo']),
+            precio_tarjeta1: parseNum(row['Precio Tarjeta 1']),
+            precio_tarjeta2y3: parseNum(row['Precio Tarjeta 2y3']),
+            visible_en_catalogo: (row['Visible Catálogo'] ?? '').trim().toLowerCase() === 'true',
+          }
+        })
 
         const BATCH = 50
         for (let b = 0; b < variantesPayload.length; b += BATCH) {
           const lote = variantesPayload.slice(b, b + BATCH)
-          const { error: varError } = await supabase.from('variantes_stock').insert(lote)
+          const { error: varError } = await supabase
+            .from('variantes_stock')
+            .upsert(lote, { onConflict: 'producto_id,talle,color' })
+            
           if (varError) throw varError
         }
-        variantesCreadas += variantesPayload.length
+        variantesCreadas += creadasEnEsteProducto
+        variantesActualizadas += actualizadasEnEsteProducto
 
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : JSON.stringify(err)
@@ -316,7 +342,7 @@ export default function ImportarStockPage() {
       setProgress({ done: i + 1, total: productos.length })
     }
 
-    setSummary({ productosCreados, variantesCreadas, errores })
+    setSummary({ productosCreados, variantesCreadas, variantesActualizadas, errores })
     setStep('done')
   }
 
@@ -702,9 +728,10 @@ export default function ImportarStockPage() {
           </div>
 
           {/* Métricas */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <StatCard label="Productos creados" value={summary.productosCreados} />
             <StatCard label="Variantes creadas" value={summary.variantesCreadas} />
+            <StatCard label="Actualizadas" value={summary.variantesActualizadas} />
             <StatCard label="Errores" value={summary.errores.length} alert={summary.errores.length > 0} />
           </div>
 
