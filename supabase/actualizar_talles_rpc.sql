@@ -5,13 +5,16 @@ CREATE OR REPLACE FUNCTION public.crear_producto_con_variantes(
     p_genero VARCHAR,
     p_tipo_talle VARCHAR,
     p_precio_inicial NUMERIC,
-    p_imagenes TEXT[]
+    p_imagenes TEXT[],
+    p_colores TEXT[] DEFAULT ARRAY[]::TEXT[]
 )
 RETURNS JSON AS $$
 DECLARE
     v_producto_id UUID;
     v_talles VARCHAR[];
     v_talle VARCHAR;
+    v_color TEXT;
+    v_colores_efectivos TEXT[];
 BEGIN
     -- Insertar el producto
     INSERT INTO public.productos (nombre, descripcion, categoria_id, genero, tipo_talle, imagenes, activo)
@@ -28,15 +31,24 @@ BEGIN
     ELSIF p_tipo_talle = 'sin_talle' THEN
         v_talles := ARRAY['N/A'];
     ELSE
-        -- Por defecto estandar
         v_talles := ARRAY['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL', '4XL'];
     END IF;
 
-    -- Insertar variantes (cantidad 0 inicial, color genérico)
+    -- Si no se proporcionaron colores, usar un único color genérico
+    IF p_colores IS NULL OR array_length(p_colores, 1) IS NULL OR array_length(p_colores, 1) = 0 THEN
+        v_colores_efectivos := ARRAY['Sin color'];
+    ELSE
+        v_colores_efectivos := p_colores;
+    END IF;
+
+    -- Insertar variantes: una por cada combinación talle × color
     FOREACH v_talle IN ARRAY v_talles
     LOOP
-        INSERT INTO public.variantes_stock (producto_id, talle, color, cantidad, precio)
-        VALUES (v_producto_id, v_talle, 'Sin Especificar', 0, p_precio_inicial);
+        FOREACH v_color IN ARRAY v_colores_efectivos
+        LOOP
+            INSERT INTO public.variantes_stock (producto_id, talle, color, cantidad, precio)
+            VALUES (v_producto_id, v_talle, v_color, 0, p_precio_inicial);
+        END LOOP;
     END LOOP;
 
     RETURN json_build_object(

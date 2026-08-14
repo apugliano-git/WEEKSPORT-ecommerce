@@ -7,6 +7,15 @@ import { actualizarProducto } from '@/lib/productoService'
 import { crearVariante, actualizarVariante, eliminarVariante } from '@/lib/variantesService'
 import { Switch, BottomSheet, Badge, Button } from '@/components/admin/ui'
 
+// Normaliza un nombre de color: primera letra mayúscula, resto minúsculas
+function capitalizarColor(s: string): string {
+  const trimmed = s.trim();
+  if (!trimmed) return '';
+  return trimmed.charAt(0).toUpperCase() + trimmed.slice(1).toLowerCase();
+}
+
+const MAX_COLOR_LENGTH = 20;
+
 interface TallePorTipo {
   tipo_talle: string;
   talle: string;
@@ -100,7 +109,10 @@ function VarianteRow({
             <input
               type="text"
               value={color}
-              onChange={e => setColor(e.target.value)}
+              onChange={e => setColor(e.target.value.slice(0, MAX_COLOR_LENGTH))}
+              onBlur={e => setColor(capitalizarColor(e.target.value))}
+              maxLength={MAX_COLOR_LENGTH}
+              placeholder="Ej: Negro"
               className="w-full bg-[#0F0F12] text-white border border-white/10 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-[#F400A1]"
             />
           </td>
@@ -216,11 +228,13 @@ function VarianteRow({
 function NuevaVarianteRow({
   productoId,
   tallesDisponibles,
+  coloresExistentes,
   onSuccess,
   onCancel,
 }: {
   productoId: string;
   tallesDisponibles: string[];
+  coloresExistentes: string[];
   onSuccess: () => void;
   onCancel: () => void;
 }) {
@@ -233,14 +247,15 @@ function NuevaVarianteRow({
   const [errorMsg, setErrorMsg] = useState('');
 
   const handleSave = async () => {
-    if (!talle || !color || precio <= 0) {
+    const colorFinal = capitalizarColor(color);
+    if (!talle || !colorFinal || precio <= 0) {
       setStatus('error');
       setErrorMsg('Completá talle, color y precio antes de guardar.');
       return;
     }
     setStatus('saving');
     setErrorMsg('');
-    const res = await crearVariante(productoId, talle, color, cantidad, precio, visible);
+    const res = await crearVariante(productoId, talle, colorFinal, cantidad, precio, visible);
     if (res.status === 'success') {
       onSuccess();
     } else {
@@ -262,13 +277,36 @@ function NuevaVarianteRow({
         </select>
       </td>
       <td className="px-3 py-2">
-        <input
-          type="text"
-          placeholder="Ej: Negro"
-          value={color}
-          onChange={e => setColor(e.target.value)}
-          className="w-full bg-[#0F0F12] text-white border border-white/10 rounded-lg px-2 py-1 text-xs placeholder-gray-600 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-        />
+        <div className="flex flex-col gap-1.5">
+          {/* Chips de colores existentes */}
+          {coloresExistentes.length > 0 && (
+            <div className="flex flex-wrap gap-1">
+              {coloresExistentes.map(c => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => setColor(c)}
+                  className={`px-1.5 py-0.5 rounded text-[10px] font-semibold border transition-colors ${
+                    color === c
+                      ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-300'
+                      : 'bg-white/5 border-white/10 text-gray-400 hover:border-white/20 hover:text-gray-200'
+                  }`}
+                >
+                  {c}
+                </button>
+              ))}
+            </div>
+          )}
+          <input
+            type="text"
+            placeholder="Ej: Negro"
+            value={color}
+            onChange={e => setColor(e.target.value.slice(0, MAX_COLOR_LENGTH))}
+            onBlur={e => setColor(capitalizarColor(e.target.value))}
+            maxLength={MAX_COLOR_LENGTH}
+            className="w-full bg-[#0F0F12] text-white border border-white/10 rounded-lg px-2 py-1 text-xs placeholder-gray-600 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+          />
+        </div>
       </td>
       <td className="px-3 py-2 text-right">
         <input
@@ -327,7 +365,9 @@ function NuevaVarianteRow({
   );
 }
 
+
 // ─────────────────────────────────────────────
+
 // Sub-componente: fila de producto (expandible)
 // ─────────────────────────────────────────────
 function ProductRow({
@@ -359,7 +399,11 @@ function ProductRow({
     return a.talle.localeCompare(b.talle);
   });
 
+  // Colores únicos ya usados en este producto (para sugerencias rápidas)
+  const coloresExistentes = [...new Set(variants.map(v => v.color).filter(Boolean))];
+
   const totalStock = variants.reduce((sum, v) => sum + v.cantidad, 0);
+
 
   let priceDisplay = 'N/A';
   if (variants.length > 0) {
@@ -454,6 +498,7 @@ function ProductRow({
                       <NuevaVarianteRow
                         productoId={product.id}
                         tallesDisponibles={tallesDisponibles}
+                        coloresExistentes={coloresExistentes}
                         onSuccess={() => { setShowNuevaVariante(false); onRefresh(); }}
                         onCancel={() => setShowNuevaVariante(false)}
                       />
@@ -533,7 +578,11 @@ function MobileVarianteItem({
           </div>
           <div>
             <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1 block">Color</label>
-            <input type="text" value={color} onChange={e => setColor(e.target.value)}
+            <input type="text" value={color}
+              onChange={e => setColor(e.target.value.slice(0, MAX_COLOR_LENGTH))}
+              onBlur={e => setColor(capitalizarColor(e.target.value))}
+              maxLength={MAX_COLOR_LENGTH}
+              placeholder="Ej: Negro"
               className="w-full bg-[#0F0F12] text-white border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-[#F400A1]" />
           </div>
           <div>
@@ -594,11 +643,13 @@ function MobileVarianteItem({
 function MobileNuevaVariante({
   productoId,
   tallesDisponibles,
+  coloresExistentes,
   onSuccess,
   onCancel,
 }: {
   productoId: string;
   tallesDisponibles: string[];
+  coloresExistentes: string[];
   onSuccess: () => void;
   onCancel: () => void;
 }) {
@@ -611,11 +662,12 @@ function MobileNuevaVariante({
   const [errorMsg, setErrorMsg] = useState('');
 
   const handleSave = async () => {
-    if (!talle || !color || precio <= 0) {
+    const colorFinal = capitalizarColor(color);
+    if (!talle || !colorFinal || precio <= 0) {
       setStatus('error'); setErrorMsg('Completá talle, color y precio antes de guardar.'); return;
     }
     setStatus('saving'); setErrorMsg('');
-    const res = await crearVariante(productoId, talle, color, cantidad, precio, visible);
+    const res = await crearVariante(productoId, talle, colorFinal, cantidad, precio, visible);
     if (res.status === 'success') { onSuccess(); }
     else { setStatus('error'); setErrorMsg(res.message); }
   };
@@ -631,9 +683,31 @@ function MobileNuevaVariante({
             {tallesDisponibles.map(t => <option key={t} value={t}>{t}</option>)}
           </select>
         </div>
-        <div>
-          <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1 block">Color</label>
-          <input type="text" placeholder="Ej: Negro" value={color} onChange={e => setColor(e.target.value)}
+        <div className="flex flex-col gap-1.5">
+          <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-0.5 block">Color</label>
+          {/* Chips de colores existentes */}
+          {coloresExistentes.length > 0 && (
+            <div className="flex flex-wrap gap-1">
+              {coloresExistentes.map(c => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => setColor(c)}
+                  className={`px-2 py-0.5 rounded text-[10px] font-semibold border transition-colors ${
+                    color === c
+                      ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-300'
+                      : 'bg-white/5 border-white/10 text-gray-400 hover:border-white/20 hover:text-gray-200'
+                  }`}
+                >
+                  {c}
+                </button>
+              ))}
+            </div>
+          )}
+          <input type="text" placeholder="Ej: Negro" value={color}
+            onChange={e => setColor(e.target.value.slice(0, MAX_COLOR_LENGTH))}
+            onBlur={e => setColor(capitalizarColor(e.target.value))}
+            maxLength={MAX_COLOR_LENGTH}
             className="w-full bg-[#0F0F12] text-white border border-white/10 rounded-lg px-3 py-2 text-sm placeholder-gray-600 focus:outline-none focus:ring-1 focus:ring-emerald-500" />
         </div>
         <div>
@@ -660,6 +734,7 @@ function MobileNuevaVariante({
   );
 }
 
+
 // ─────────────────────────────────────────────
 // Sub-componente MOBILE: sheet de variantes de un producto
 // ─────────────────────────────────────────────
@@ -682,6 +757,9 @@ function MobileProductSheet({
     .filter(t => t.tipo_talle === product.tipo_talle)
     .map(t => t.talle);
 
+  // Colores únicos ya usados en este producto
+  const coloresExistentes = [...new Set(variants.map(v => v.color).filter(Boolean))];
+
   return (
     <div className="flex flex-col gap-3">
       {/* Variantes */}
@@ -698,10 +776,12 @@ function MobileProductSheet({
         <MobileNuevaVariante
           productoId={product.id}
           tallesDisponibles={tallesDisponibles}
+          coloresExistentes={coloresExistentes}
           onSuccess={() => { setShowNuevaVariante(false); onRefresh(); }}
           onCancel={() => setShowNuevaVariante(false)}
         />
       )}
+
 
       {/* Acciones del pie */}
       <div className="flex flex-col gap-2 pt-2 border-t border-white/5 mt-2">

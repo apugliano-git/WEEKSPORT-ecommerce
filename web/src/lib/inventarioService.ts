@@ -21,6 +21,7 @@ export interface NuevoArticuloPayload {
   tipo_talle: string;
   precio_inicial: number;
   imagenes?: string[];
+  colores?: string[]; // Array de nombres de colores para generar variantes
 }
 
 /**
@@ -59,7 +60,8 @@ export async function crearArticuloCompleto(payload: NuevoArticuloPayload): Prom
       p_genero: payload.genero,
       p_tipo_talle: payload.tipo_talle,
       p_precio_inicial: payload.precio_inicial,
-      p_imagenes: payload.imagenes || []
+      p_imagenes: payload.imagenes || [],
+      p_colores: payload.colores || []
     });
 
     if (error) {
