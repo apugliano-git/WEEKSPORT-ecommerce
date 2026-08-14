@@ -24,6 +24,7 @@ export interface Producto {
   activo: boolean;
   genero?: string;
   tipo_talle: string;
+  precio_promocional?: number | null;
   created_at: string;
   variantes_stock?: VarianteStock[];
 }

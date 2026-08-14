@@ -31,7 +31,8 @@ export function ProductInfo({ producto }: ProductInfoProps) {
   const isOutOfStock = !selectedVariante || selectedVariante.cantidad === 0
 
   // Price
-  const precioMostrar = selectedVariante?.precio || variantes[0]?.precio || 0
+  const precioBase = selectedVariante?.precio || variantes[0]?.precio || 0;
+  const precioPromo = producto.precio_promocional ?? null;
 
   const handleAddToCart = () => {
     if (selectedVariante && selectedVariante.cantidad > 0) {
@@ -74,10 +75,25 @@ export function ProductInfo({ producto }: ProductInfoProps) {
 
       {/* Price */}
       <div className="mt-4 md:mt-6">
-        <span className="text-3xl md:text-4xl font-bold font-display text-[#F400A1]">
-          {precioMostrar ? precioMostrar.toLocaleString('es-AR', { style: 'currency', currency: 'ARS' }) : '---'}
-        </span>
+        {precioPromo ? (
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold uppercase tracking-widest text-[#F400A1]/80 bg-[#F400A1]/10 px-2 py-0.5 rounded-full">Oferta</span>
+            </div>
+            <span className="text-3xl md:text-4xl font-bold font-display text-[#F400A1]">
+              {precioPromo.toLocaleString('es-AR', { style: 'currency', currency: 'ARS' })}
+            </span>
+            <span className="text-base text-gray-500 line-through font-display">
+              {precioBase.toLocaleString('es-AR', { style: 'currency', currency: 'ARS' })}
+            </span>
+          </div>
+        ) : (
+          <span className="text-3xl md:text-4xl font-bold font-display text-[#F400A1]">
+            {precioBase ? precioBase.toLocaleString('es-AR', { style: 'currency', currency: 'ARS' }) : '---'}
+          </span>
+        )}
       </div>
+
 
       {/* Selectors */}
       <div className="mt-8 flex flex-col gap-6">

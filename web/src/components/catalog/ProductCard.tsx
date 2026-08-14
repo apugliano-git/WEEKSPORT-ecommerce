@@ -11,8 +11,8 @@ interface ProductCardProps {
 import Link from 'next/link'
 
 export function ProductCard({ producto }: ProductCardProps) {
-  // Por ahora, asumimos si hay alguna variante con stock o usamos el precio de la primera
-  const precioMostrar = producto.variantes_stock?.[0]?.precio || 0;
+  const precioBase = producto.variantes_stock?.[0]?.precio || 0;
+  const precioPromo = producto.precio_promocional ?? null;
   const isOutOfStock = !producto.variantes_stock?.some(v => v.cantidad > 0);
 
   return (
@@ -30,6 +30,13 @@ export function ProductCard({ producto }: ProductCardProps) {
           <div className="flex items-center justify-center w-full h-full text-gray-500 text-xs">Sin imagen</div>
         )}
         
+        {/* Badge Promoción */}
+        {precioPromo && (
+          <div className="absolute top-2 left-2 bg-[#F400A1] text-white text-[9px] uppercase tracking-widest font-extrabold px-2 py-1 rounded-full shadow-lg shadow-[#F400A1]/40">
+            Oferta
+          </div>
+        )}
+
         {/* Etiqueta de Sin Stock */}
         {isOutOfStock && (
           <div className="absolute top-2 right-2 bg-red-500/95 backdrop-blur-md text-white text-[9px] uppercase tracking-widest font-extrabold px-2 py-1 rounded-full shadow-lg">
@@ -43,12 +50,23 @@ export function ProductCard({ producto }: ProductCardProps) {
         <h3 className="text-sm font-medium font-display text-white truncate group-hover:text-[#F400A1] transition-colors">
           {producto.nombre}
         </h3>
-        <div className="mt-1 flex items-end justify-between">
-          <span className="text-base font-bold font-display text-[#F400A1]">
-            {precioMostrar 
-              ? precioMostrar.toLocaleString('es-AR', { style: 'currency', currency: 'ARS' }) 
-              : '---'}
-          </span>
+        <div className="mt-1 flex items-end justify-between gap-2">
+          {precioPromo ? (
+            <div className="flex flex-col gap-0.5">
+              <span className="text-base font-bold font-display text-[#F400A1]">
+                {precioPromo.toLocaleString('es-AR', { style: 'currency', currency: 'ARS' })}
+              </span>
+              <span className="text-xs text-gray-500 line-through leading-none">
+                {precioBase.toLocaleString('es-AR', { style: 'currency', currency: 'ARS' })}
+              </span>
+            </div>
+          ) : (
+            <span className="text-base font-bold font-display text-[#F400A1]">
+              {precioBase 
+                ? precioBase.toLocaleString('es-AR', { style: 'currency', currency: 'ARS' }) 
+                : '---'}
+            </span>
+          )}
         </div>
       </div>
     </Link>

@@ -3,7 +3,7 @@
 import React, { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Producto, Categoria, VarianteStock } from '@/types'
-import { actualizarProducto } from '@/lib/productoService'
+import { actualizarProducto, setPromocion, clearPromocion } from '@/lib/productoService'
 import { crearVariante, actualizarVariante, eliminarVariante } from '@/lib/variantesService'
 import { Switch, BottomSheet, Badge, Button } from '@/components/admin/ui'
 
@@ -375,12 +375,14 @@ function ProductRow({
   categoryMap,
   tallesPorTipo,
   onEdit,
+  onPromo,
   onRefresh,
 }: {
   product: Producto;
   categoryMap: Record<string, string>;
   tallesPorTipo: TallePorTipo[];
   onEdit: (p: Producto) => void;
+  onPromo: (p: Producto) => void;
   onRefresh: () => void;
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -444,7 +446,20 @@ function ProductRow({
             {totalStock} uds
           </span>
         </td>
-        <td className="px-6 py-4 text-right font-medium text-white">{priceDisplay}</td>
+        <td className="px-6 py-4 text-right font-medium text-white">
+          <div className="flex flex-col items-end gap-0.5">
+            {product.precio_promocional ? (
+              <>
+                <span className="text-[#F400A1] font-bold text-sm">
+                  {product.precio_promocional.toLocaleString('es-AR', { style: 'currency', currency: 'ARS' })}
+                </span>
+                <span className="text-gray-500 line-through text-xs">{priceDisplay}</span>
+              </>
+            ) : (
+              <span>{priceDisplay}</span>
+            )}
+          </div>
+        </td>
         <td className="px-6 py-4 text-center">
           <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold ${
             product.activo
@@ -456,13 +471,26 @@ function ProductRow({
           </span>
         </td>
         <td className="px-6 py-4 text-center">
-          <button
-            onClick={() => onEdit(product)}
-            className="px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-white text-xs font-bold rounded-lg transition-colors"
-          >
-            Editar
-          </button>
+          <div className="flex items-center justify-center gap-2">
+            <button
+              onClick={() => onEdit(product)}
+              className="px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-white text-xs font-bold rounded-lg transition-colors"
+            >
+              Editar
+            </button>
+            <button
+              onClick={() => onPromo(product)}
+              className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-colors border ${
+                product.precio_promocional
+                  ? 'bg-[#F400A1]/10 border-[#F400A1]/30 text-[#F400A1] hover:bg-[#F400A1]/20'
+                  : 'bg-zinc-800 border-zinc-700 text-gray-300 hover:bg-zinc-700'
+              }`}
+            >
+              {product.precio_promocional ? '🏷 En oferta' : 'Promoción'}
+            </button>
+          </div>
         </td>
+
       </tr>
 
       {isExpanded && (
@@ -826,6 +854,10 @@ export function ProductTable({ productos, categorias, tallesPorTipo }: ProductTa
   const [editStatus, setEditStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle')
   const [editError, setEditError] = useState('')
   const [selectedProductSheet, setSelectedProductSheet] = useState<Producto | null>(null)
+  const [promoProduct, setPromoProduct] = useState<Producto | null>(null)
+  const [promoInput, setPromoInput] = useState('')
+  const [promoStatus, setPromoStatus] = useState<'idle' | 'saving' | 'error'>('idle')
+  const [promoError, setPromoError] = useState('')
 
   const categoryMap = React.useMemo(() => {
     return categorias.reduce((acc, cat) => {
@@ -878,6 +910,37 @@ export function ProductTable({ productos, categorias, tallesPorTipo }: ProductTa
     });
     setEditStatus('idle');
     setEditError('');
+  };
+
+  const handlePromo = (product: Producto) => {
+    setPromoProduct(product);
+    setPromoInput(product.precio_promocional ? String(product.precio_promocional) : '');
+    setPromoStatus('idle');
+    setPromoError('');
+  };
+
+  const handleSavePromo = async () => {
+    if (!promoProduct) return;
+    const precio = parseFloat(promoInput);
+    const precioBase = Math.min(...(promoProduct.variantes_stock || []).map(v => v.precio).filter(p => p > 0));
+    if (isNaN(precio) || precio <= 0) {
+      setPromoError('Ingresá un precio válido mayor a 0.'); return;
+    }
+    if (precio >= precioBase) {
+      setPromoError(`El precio de oferta debe ser menor al precio base (${precioBase.toLocaleString('es-AR', { style: 'currency', currency: 'ARS' })}).`); return;
+    }
+    setPromoStatus('saving');
+    const res = await setPromocion(promoProduct.id, precio);
+    if (res.status === 'success') { setPromoProduct(null); router.refresh(); }
+    else { setPromoStatus('error'); setPromoError(res.message); }
+  };
+
+  const handleClearPromo = async () => {
+    if (!promoProduct) return;
+    setPromoStatus('saving');
+    const res = await clearPromocion(promoProduct.id);
+    if (res.status === 'success') { setPromoProduct(null); router.refresh(); }
+    else { setPromoStatus('error'); setPromoError(res.message); }
   };
 
   return (
@@ -937,7 +1000,7 @@ export function ProductTable({ productos, categorias, tallesPorTipo }: ProductTa
                 <tr><td colSpan={7} className="px-6 py-12 text-center text-gray-500">No se encontraron productos que coincidan con la búsqueda.</td></tr>
               ) : (
                 filteredProducts.map(prod => (
-                  <ProductRow key={prod.id} product={prod} categoryMap={categoryMap} tallesPorTipo={tallesPorTipo} onEdit={handleEdit} onRefresh={() => router.refresh()} />
+                  <ProductRow key={prod.id} product={prod} categoryMap={categoryMap} tallesPorTipo={tallesPorTipo} onEdit={handleEdit} onPromo={handlePromo} onRefresh={() => router.refresh()} />
                 ))
               )}
             </tbody>
@@ -1019,6 +1082,91 @@ export function ProductTable({ productos, categorias, tallesPorTipo }: ProductTa
           />
         )}
       </BottomSheet>
+
+      {/* ─── Modal Promoción ────────────────────────────────────── */}
+      {promoProduct && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-[#1A1A20] w-full max-w-md rounded-2xl border border-white/10 shadow-2xl overflow-hidden flex flex-col animate-fadeIn">
+            <div className="p-6 border-b border-white/5 flex justify-between items-center">
+              <div>
+                <h3 className="text-xl font-bold text-white">Aplicar Promoción</h3>
+                <p className="text-sm text-gray-500 mt-0.5 truncate max-w-[280px]">{promoProduct.nombre}</p>
+              </div>
+              <button onClick={() => setPromoProduct(null)} className="text-gray-400 hover:text-white transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+              </button>
+            </div>
+
+            <div className="p-6 flex flex-col gap-5">
+              {/* Precio actual */}
+              <div className="flex items-center justify-between p-3 rounded-xl bg-[#0F0F12] border border-white/5">
+                <span className="text-sm text-gray-400">Precio base actual</span>
+                <span className="font-bold text-white text-sm">
+                  {Math.min(...(promoProduct.variantes_stock || []).filter(v => v.precio > 0).map(v => v.precio))
+                    .toLocaleString('es-AR', { style: 'currency', currency: 'ARS' })}
+                </span>
+              </div>
+
+              {/* Input precio promo */}
+              <div>
+                <label className="block text-sm font-medium text-gray-400 mb-2">
+                  Precio de oferta <span className="text-[#F400A1]">*</span>
+                </label>
+                <div className="relative">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-bold text-sm">$</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder="Ingresá el precio promocional..."
+                    value={promoInput}
+                    onChange={e => { setPromoInput(e.target.value); setPromoStatus('idle'); setPromoError(''); }}
+                    className="w-full bg-[#23232A] text-white border border-white/10 rounded-xl pl-8 pr-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#F400A1] transition-shadow"
+                  />
+                </div>
+                <p className="text-xs text-gray-600 mt-1.5">Debe ser menor al precio base. El precio original se verá tachado en la tienda.</p>
+              </div>
+
+              {promoError && (
+                <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-sm text-red-400">{promoError}</div>
+              )}
+
+              {promoProduct.precio_promocional && (
+                <div className="flex items-center gap-2 p-3 rounded-xl bg-[#F400A1]/5 border border-[#F400A1]/20 text-sm text-[#F400A1]">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2Zm1 13H11v-5h2v5Zm0-7H11V6h2v2Z"/></svg>
+                  Oferta activa: {Number(promoProduct.precio_promocional).toLocaleString('es-AR', { style: 'currency', currency: 'ARS' })}
+                </div>
+              )}
+            </div>
+
+            <div className="p-6 border-t border-white/5 flex justify-between items-center gap-3 bg-[#1A1A20]">
+              <div>
+                {promoProduct.precio_promocional && (
+                  <button
+                    onClick={handleClearPromo}
+                    disabled={promoStatus === 'saving'}
+                    className="text-sm font-semibold text-red-400 hover:text-red-300 transition-colors disabled:opacity-50"
+                  >
+                    Quitar oferta
+                  </button>
+                )}
+              </div>
+              <div className="flex gap-3">
+                <button onClick={() => setPromoProduct(null)} disabled={promoStatus === 'saving'} className="px-5 py-2.5 text-sm font-bold text-gray-300 hover:text-white transition-colors disabled:opacity-50">
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleSavePromo}
+                  disabled={promoStatus === 'saving' || !promoInput}
+                  className="px-5 py-2.5 bg-[#F400A1] hover:bg-[#D000A0] text-white text-sm font-bold rounded-xl shadow-lg shadow-[#F400A1]/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {promoStatus === 'saving' ? 'Guardando...' : 'Aplicar oferta'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ─── Modal edición de producto (desktop + mobile) ─────── */}
       {editingProduct && (

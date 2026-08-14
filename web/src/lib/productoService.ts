@@ -33,3 +33,32 @@ export async function actualizarProducto(productoId: string, datos: DatosProduct
     return { status: 'error', message: 'Fallo de red o excepción interna al actualizar producto.' };
   }
 }
+
+export async function setPromocion(productoId: string, precio_promocional: number): Promise<ApiResponse> {
+  try {
+    const { error } = await supabase
+      .from('productos')
+      .update({ precio_promocional })
+      .eq('id', productoId);
+
+    if (error) return { status: 'error', message: error.message };
+    return { status: 'success', message: 'Promoción aplicada.' };
+  } catch (err: any) {
+    return { status: 'error', message: 'Error al aplicar la promoción.' };
+  }
+}
+
+export async function clearPromocion(productoId: string): Promise<ApiResponse> {
+  try {
+    const { error } = await supabase
+      .from('productos')
+      .update({ precio_promocional: null })
+      .eq('id', productoId);
+
+    if (error) return { status: 'error', message: error.message };
+    return { status: 'success', message: 'Promoción eliminada.' };
+  } catch (err: any) {
+    return { status: 'error', message: 'Error al eliminar la promoción.' };
+  }
+}
+
