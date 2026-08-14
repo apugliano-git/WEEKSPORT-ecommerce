@@ -24,6 +24,8 @@ export function VentasManager({ productos, categorias }: VentasManagerProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [cantidadInput, setCantidadInput] = useState(1);
+  const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
+  const [selectedColor, setSelectedColor] = useState<string | null>(null);
   const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
 
   const [isLoading, setIsLoading] = useState(false);
@@ -49,47 +51,74 @@ export function VentasManager({ productos, categorias }: VentasManagerProps) {
     }, {} as Record<string, string>);
   }, [categorias]);
 
-  // Aplana todos los productos y variantes en una lista buscable
+  // Aplana todos los productos buscables
   const searchResults = useMemo(() => {
     if (!searchTerm.trim()) return [];
 
     const term = searchTerm.toLowerCase();
-    const results: { producto: Producto; variante: VarianteStock }[] = [];
+    const results: Producto[] = [];
 
     for (const prod of productos) {
       if (!prod.variantes_stock) continue;
+
+      // Solo mostrar productos que tengan al menos una variante con stock
+      const hasStock = prod.variantes_stock.some(v => v.cantidad > 0);
+      if (!hasStock) continue;
 
       const matchProduct = 
         prod.nombre.toLowerCase().includes(term) ||
         (categoryMap[prod.categoria_id] || '').toLowerCase().includes(term);
 
-      for (const variante of prod.variantes_stock) {
-        // Solo mostrar variantes con stock
-        if (variante.cantidad <= 0) continue;
-
-        const matchVariant = 
-          variante.talle.toLowerCase().includes(term) ||
-          variante.color.toLowerCase().includes(term);
-
-        if (matchProduct || matchVariant) {
-          results.push({ producto: prod, variante });
-        }
+      if (matchProduct) {
+        results.push(prod);
       }
     }
 
     return results.slice(0, 10); // Límite para no saturar el dropdown
   }, [productos, searchTerm, categoryMap]);
 
-  // Selección de variante desde el dropdown
-  const handleSelectVariant = (producto: Producto, variante: VarianteStock) => {
-    setSelectedVariantId(variante.id);
-    setSearchTerm(`${producto.nombre} - ${variante.talle} / ${variante.color}`);
+  // Selección de producto desde el dropdown
+  const handleSelectProduct = (producto: Producto) => {
+    setSelectedProductId(producto.id);
+    setSelectedColor(null);
+    setSelectedVariantId(null);
+    setSearchTerm('');
     setIsDropdownOpen(false);
   };
 
+  const selectedProduct = useMemo(() => productos.find(p => p.id === selectedProductId) || null, [productos, selectedProductId]);
+
+  const availableColors = useMemo(() => {
+    if (!selectedProduct || !selectedProduct.variantes_stock) return [];
+    const colors = selectedProduct.variantes_stock
+      .filter(v => v.cantidad > 0)
+      .map(v => v.color || 'Sin color');
+    return [...new Set(colors)];
+  }, [selectedProduct]);
+
+  useEffect(() => {
+    if (selectedProductId && availableColors.length === 1 && !selectedColor) {
+      setSelectedColor(availableColors[0]);
+    }
+  }, [selectedProductId, availableColors, selectedColor]);
+
+  const availableSizes = useMemo(() => {
+    if (!selectedProduct || !selectedProduct.variantes_stock || !selectedColor) return [];
+    return selectedProduct.variantes_stock
+      .filter(v => v.cantidad > 0 && (v.color || 'Sin color') === selectedColor)
+      .map(v => ({ id: v.id, talle: v.talle, stock: v.cantidad }));
+  }, [selectedProduct, selectedColor]);
+
+  // Autoseleccionar talle si solo hay uno
+  useEffect(() => {
+    if (selectedColor && availableSizes.length === 1 && !selectedVariantId) {
+      setSelectedVariantId(availableSizes[0].id);
+    }
+  }, [selectedColor, availableSizes, selectedVariantId]);
+
   const handleAgregarAlCarrito = () => {
-    if (!selectedVariantId) {
-      setMensaje({ tipo: 'error', texto: 'Seleccione un producto del buscador.' });
+    if (!selectedVariantId || !selectedProduct) {
+      setMensaje({ tipo: 'error', texto: 'Completá la selección del producto.' });
       return;
     }
     if (cantidadInput <= 0) {
@@ -97,20 +126,10 @@ export function VentasManager({ productos, categorias }: VentasManagerProps) {
       return;
     }
 
-    // Buscar variante y producto seleccionados
-    let varianteSeleccionada: VarianteStock | null = null;
-    let productoSeleccionado: Producto | null = null;
+    // Buscar variante
+    const varianteSeleccionada = selectedProduct.variantes_stock?.find(v => v.id === selectedVariantId);
 
-    for (const prod of productos) {
-      const v = (prod.variantes_stock || []).find(v => v.id === selectedVariantId);
-      if (v) {
-        varianteSeleccionada = v;
-        productoSeleccionado = prod;
-        break;
-      }
-    }
-
-    if (!varianteSeleccionada || !productoSeleccionado) {
+    if (!varianteSeleccionada) {
       setMensaje({ tipo: 'error', texto: `Variante no encontrada.` });
       return;
     }
@@ -133,7 +152,7 @@ export function VentasManager({ productos, categorias }: VentasManagerProps) {
     const nuevoItem: CarritoItem = {
       variante_id: varianteSeleccionada.id,
       cantidad: cantidadInput,
-      nombre_producto: productoSeleccionado.nombre,
+      nombre_producto: selectedProduct.nombre,
       talle: varianteSeleccionada.talle,
       color: varianteSeleccionada.color,
       precio_unitario: precioUnitario,
@@ -154,10 +173,11 @@ export function VentasManager({ productos, categorias }: VentasManagerProps) {
       return [...prev, nuevoItem];
     });
 
-    setSearchTerm('');
+    setSelectedProductId(null);
+    setSelectedColor(null);
     setSelectedVariantId(null);
     setCantidadInput(1);
-    setMensaje({ tipo: 'success', texto: `"${productoSeleccionado.nombre} — ${varianteSeleccionada.talle} / ${varianteSeleccionada.color}" agregado al carrito.` });
+    setMensaje({ tipo: 'success', texto: `"${selectedProduct.nombre} — ${varianteSeleccionada.talle} / ${varianteSeleccionada.color}" agregado al carrito.` });
   };
 
   const handleRemoverDelCarrito = (variante_id: string) => {
@@ -218,90 +238,128 @@ export function VentasManager({ productos, categorias }: VentasManagerProps) {
       <div className="bg-[#1A1A20] rounded-2xl border border-white/5 p-6 flex flex-col gap-4">
         <div>
           <h2 className="text-lg font-bold text-white">Agregar Producto</h2>
-          <p className="text-sm text-gray-500 mt-1">Buscá por nombre, talle o color. Solo se muestran variantes con stock.</p>
+          <p className="text-sm text-gray-500 mt-1">Buscá el producto y luego filtrá por color y talle.</p>
         </div>
-        <div className="flex flex-col sm:flex-row gap-3">
-          {/* Dropdown de Búsqueda */}
-          <div className="flex-1 relative" ref={dropdownRef}>
-            <div className="relative">
-              <input
-                id="variante-search"
-                type="text"
-                autoComplete="off"
-                className="w-full bg-[#0F0F12] text-white placeholder-gray-600 border border-white/10 rounded-xl px-10 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#F400A1] transition-shadow"
-                value={searchTerm}
-                onChange={(e) => {
-                  setSearchTerm(e.target.value);
-                  setSelectedVariantId(null);
-                  setIsDropdownOpen(true);
-                }}
-                onFocus={() => setIsDropdownOpen(true)}
-                placeholder="Buscar (ej: Botines, M, Negro...)"
-                onKeyDown={(e) => { 
-                  if (e.key === 'Enter' && selectedVariantId) {
-                    handleAgregarAlCarrito();
-                  } else if (e.key === 'Enter' && searchResults.length > 0) {
-                    handleSelectVariant(searchResults[0].producto, searchResults[0].variante);
-                  }
-                }}
-              />
-              <span className="absolute left-3 top-3 text-gray-500">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-              </span>
-              {searchTerm && (
-                <button
-                  onClick={() => { setSearchTerm(''); setSelectedVariantId(null); }}
-                  className="absolute right-3 top-3.5 text-gray-500 hover:text-white transition-colors"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
-                </button>
-              )}
-            </div>
 
-            {/* Lista de sugerencias */}
-            {isDropdownOpen && searchTerm.trim() && !selectedVariantId && (
-              <div className="absolute z-50 mt-2 w-full bg-[#1A1A20] border border-white/10 rounded-xl shadow-2xl overflow-hidden max-h-60 overflow-y-auto">
-                {searchResults.length === 0 ? (
-                  <div className="p-4 text-sm text-gray-500 text-center">No se encontraron variantes con stock.</div>
-                ) : (
-                  <ul className="divide-y divide-white/5">
-                    {searchResults.map((res) => (
-                      <li key={res.variante.id}>
-                        <button
-                          onClick={() => handleSelectVariant(res.producto, res.variante)}
-                          className="w-full text-left p-3 hover:bg-white/5 transition-colors flex flex-col gap-1"
-                        >
-                          <span className="font-semibold text-white text-sm">{res.producto.nombre}</span>
-                          <div className="flex justify-between items-center text-xs">
-                            <span className="text-gray-400">Talle: <span className="text-gray-300 font-medium">{res.variante.talle}</span> · Color: <span className="text-gray-300 font-medium">{res.variante.color || 'N/A'}</span></span>
-                            <span className="text-emerald-400 font-bold">{res.variante.cantidad} disp.</span>
-                          </div>
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
+        {!selectedProduct ? (
+          <div className="flex flex-col sm:flex-row gap-3">
+            {/* Dropdown de Búsqueda */}
+            <div className="flex-1 relative" ref={dropdownRef}>
+              <div className="relative">
+                <input
+                  id="product-search"
+                  type="text"
+                  autoComplete="off"
+                  className="w-full bg-[#0F0F12] text-white placeholder-gray-600 border border-white/10 rounded-xl px-10 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#F400A1] transition-shadow"
+                  value={searchTerm}
+                  onChange={(e) => {
+                    setSearchTerm(e.target.value);
+                    setIsDropdownOpen(true);
+                  }}
+                  onFocus={() => setIsDropdownOpen(true)}
+                  placeholder="Buscar producto por nombre (ej: Botines)..."
+                  onKeyDown={(e) => { 
+                    if (e.key === 'Enter' && searchResults.length > 0) {
+                      handleSelectProduct(searchResults[0]);
+                    }
+                  }}
+                />
+                <span className="absolute left-3 top-3 text-gray-500">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                </span>
+                {searchTerm && (
+                  <button
+                    onClick={() => { setSearchTerm(''); }}
+                    className="absolute right-3 top-3.5 text-gray-500 hover:text-white transition-colors"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                  </button>
                 )}
               </div>
-            )}
-          </div>
 
-          <input
-            id="cantidad"
-            name="cantidad"
-            type="number"
-            min="1"
-            className="w-full sm:w-28 bg-[#0F0F12] text-white border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#F400A1] transition-shadow text-center"
-            value={cantidadInput}
-            onChange={(e) => setCantidadInput(parseInt(e.target.value) || 1)}
-          />
-          <button
-            onClick={handleAgregarAlCarrito}
-            disabled={!selectedVariantId}
-            className="bg-[#F400A1] hover:bg-[#D000A0] text-white font-bold px-5 py-2.5 rounded-xl text-sm transition-colors disabled:opacity-60 disabled:cursor-not-allowed whitespace-nowrap"
-          >
-            Agregar
-          </button>
-        </div>
+              {/* Lista de sugerencias */}
+              {isDropdownOpen && searchTerm.trim() && (
+                <div className="absolute z-50 mt-2 w-full bg-[#1A1A20] border border-white/10 rounded-xl shadow-2xl overflow-hidden max-h-60 overflow-y-auto">
+                  {searchResults.length === 0 ? (
+                    <div className="p-4 text-sm text-gray-500 text-center">No se encontraron productos con stock.</div>
+                  ) : (
+                    <ul className="divide-y divide-white/5">
+                      {searchResults.map((prod) => (
+                        <li key={prod.id}>
+                          <button
+                            onClick={() => handleSelectProduct(prod)}
+                            className="w-full text-left p-3 hover:bg-white/5 transition-colors flex flex-col gap-1"
+                          >
+                            <span className="font-semibold text-white text-sm">{prod.nombre}</span>
+                            <span className="text-xs text-gray-500">{categoryMap[prod.categoria_id]}</span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-5 bg-[#0F0F12] border border-white/5 p-4 rounded-xl shadow-inner">
+            <div className="flex items-center justify-between pb-3 border-b border-white/5">
+              <span className="font-bold text-white text-base truncate">{selectedProduct.nombre}</span>
+              <button onClick={() => { setSelectedProductId(null); setSelectedColor(null); setSelectedVariantId(null); }} className="text-sm font-bold text-[#F400A1] hover:text-[#D000A0] transition-colors whitespace-nowrap ml-4">
+                Cambiar
+              </button>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="flex-1">
+                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">1. Color</label>
+                <select
+                  value={selectedColor || ''}
+                  onChange={(e) => { setSelectedColor(e.target.value); setSelectedVariantId(null); }}
+                  className="w-full bg-[#1A1A20] text-white border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#F400A1] transition-shadow appearance-none cursor-pointer"
+                >
+                  <option value="" disabled>Seleccionar color...</option>
+                  {availableColors.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+
+              <div className="flex-1">
+                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">2. Talle</label>
+                <select
+                  value={selectedVariantId || ''}
+                  onChange={(e) => setSelectedVariantId(e.target.value)}
+                  disabled={!selectedColor}
+                  className="w-full bg-[#1A1A20] text-white border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#F400A1] transition-shadow appearance-none disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                >
+                  <option value="" disabled>Seleccionar talle...</option>
+                  {availableSizes.map(s => <option key={s.id} value={s.id}>{s.talle} ({s.stock} disp.)</option>)}
+                </select>
+              </div>
+
+              <div className="w-full sm:w-28">
+                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">3. Cant.</label>
+                <input
+                  id="cantidad"
+                  type="number"
+                  min="1"
+                  className="w-full bg-[#1A1A20] text-white border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#F400A1] transition-shadow text-center"
+                  value={cantidadInput}
+                  onChange={(e) => setCantidadInput(parseInt(e.target.value) || 1)}
+                />
+              </div>
+
+              <div className="flex items-end">
+                <button
+                  onClick={handleAgregarAlCarrito}
+                  disabled={!selectedVariantId}
+                  className="w-full sm:w-auto bg-[#F400A1] hover:bg-[#D000A0] text-white font-bold px-6 py-2.5 rounded-xl text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-[#F400A1]/20 h-[42px]"
+                >
+                  Agregar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Carrito */}
