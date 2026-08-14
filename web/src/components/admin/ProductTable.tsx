@@ -3,7 +3,7 @@
 import React, { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Producto, Categoria, VarianteStock } from '@/types'
-import { actualizarProducto, setPromocion, clearPromocion } from '@/lib/productoService'
+import { actualizarProducto, setPromocion, clearPromocion, eliminarProducto } from '@/lib/productoService'
 import { crearVariante, actualizarVariante, eliminarVariante } from '@/lib/variantesService'
 import { Switch, BottomSheet, Badge, Button } from '@/components/admin/ui'
 
@@ -376,6 +376,7 @@ function ProductRow({
   tallesPorTipo,
   onEdit,
   onPromo,
+  onDelete,
   onRefresh,
 }: {
   product: Producto;
@@ -383,6 +384,7 @@ function ProductRow({
   tallesPorTipo: TallePorTipo[];
   onEdit: (p: Producto) => void;
   onPromo: (p: Producto) => void;
+  onDelete: (p: Producto) => void;
   onRefresh: () => void;
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -487,6 +489,12 @@ function ProductRow({
               }`}
             >
               {product.precio_promocional ? '🏷 En oferta' : 'Promoción'}
+            </button>
+            <button
+              onClick={() => onDelete(product)}
+              className="px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 text-xs font-bold rounded-lg transition-colors"
+            >
+              Eliminar
             </button>
           </div>
         </td>
@@ -770,12 +778,14 @@ function MobileProductSheet({
   product,
   tallesPorTipo,
   onEditProduct,
+  onDeleteProduct,
   onClose,
   onRefresh,
 }: {
   product: Producto;
   tallesPorTipo: TallePorTipo[];
   onEditProduct: () => void;
+  onDeleteProduct: () => void;
   onClose: () => void;
   onRefresh: () => void;
 }) {
@@ -829,6 +839,13 @@ function MobileProductSheet({
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
           Editar producto
         </button>
+        <button
+          onClick={() => { onClose(); onDeleteProduct(); }}
+          className="flex items-center justify-center gap-2 px-4 py-3 text-sm font-bold text-red-400 border border-red-500/10 bg-red-500/5 hover:bg-red-500/10 rounded-xl transition-colors"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+          Eliminar producto
+        </button>
       </div>
     </div>
   );
@@ -858,6 +875,10 @@ export function ProductTable({ productos, categorias, tallesPorTipo }: ProductTa
   const [promoInput, setPromoInput] = useState('')
   const [promoStatus, setPromoStatus] = useState<'idle' | 'saving' | 'error'>('idle')
   const [promoError, setPromoError] = useState('')
+  const [deletingProduct, setDeletingProduct] = useState<Producto | null>(null)
+  const [deleteStep, setDeleteStep] = useState<1 | 2>(1)
+  const [deleteStatus, setDeleteStatus] = useState<'idle' | 'deleting' | 'error'>('idle')
+  const [deleteError, setDeleteError] = useState('')
 
   const categoryMap = React.useMemo(() => {
     return categorias.reduce((acc, cat) => {
@@ -917,6 +938,27 @@ export function ProductTable({ productos, categorias, tallesPorTipo }: ProductTa
     setPromoInput(product.precio_promocional ? String(product.precio_promocional) : '');
     setPromoStatus('idle');
     setPromoError('');
+  };
+
+  const handleDeleteInitiate = (product: Producto) => {
+    setDeletingProduct(product);
+    setDeleteStep(1);
+    setDeleteStatus('idle');
+    setDeleteError('');
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deletingProduct) return;
+    setDeleteStatus('deleting');
+    setDeleteError('');
+    const res = await eliminarProducto(deletingProduct.id);
+    if (res.status === 'success') {
+      setDeletingProduct(null);
+      router.refresh();
+    } else {
+      setDeleteStatus('error');
+      setDeleteError(res.message);
+    }
   };
 
   const handleSavePromo = async () => {
@@ -1000,7 +1042,7 @@ export function ProductTable({ productos, categorias, tallesPorTipo }: ProductTa
                 <tr><td colSpan={7} className="px-6 py-12 text-center text-gray-500">No se encontraron productos que coincidan con la búsqueda.</td></tr>
               ) : (
                 filteredProducts.map(prod => (
-                  <ProductRow key={prod.id} product={prod} categoryMap={categoryMap} tallesPorTipo={tallesPorTipo} onEdit={handleEdit} onPromo={handlePromo} onRefresh={() => router.refresh()} />
+                  <ProductRow key={prod.id} product={prod} categoryMap={categoryMap} tallesPorTipo={tallesPorTipo} onEdit={handleEdit} onPromo={handlePromo} onDelete={handleDeleteInitiate} onRefresh={() => router.refresh()} />
                 ))
               )}
             </tbody>
@@ -1078,10 +1120,81 @@ export function ProductTable({ productos, categorias, tallesPorTipo }: ProductTa
             tallesPorTipo={tallesPorTipo}
             onClose={() => setSelectedProductSheet(null)}
             onEditProduct={() => handleEdit(selectedProductSheet)}
+            onDeleteProduct={() => handleDeleteInitiate(selectedProductSheet)}
             onRefresh={() => router.refresh()}
           />
         )}
       </BottomSheet>
+
+      {/* ─── Modal Eliminación (2-step) ───────────────────────── */}
+      {deletingProduct && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-[#1A1A20] w-full max-w-md rounded-2xl border border-red-500/20 shadow-2xl overflow-hidden flex flex-col animate-fadeIn">
+            <div className="p-6 border-b border-red-500/10 flex justify-between items-center bg-red-500/5">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-red-500/10 flex items-center justify-center text-red-500">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-white">Eliminar Producto</h3>
+                  <p className="text-sm text-red-400 mt-0.5">Acción destructiva</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-6 flex flex-col gap-4">
+              <div className="p-4 rounded-xl bg-[#0F0F12] border border-white/5">
+                <p className="text-sm text-gray-300">
+                  Estás a punto de eliminar <strong>{deletingProduct.nombre}</strong>.
+                </p>
+                <p className="text-sm text-gray-400 mt-2">
+                  Esto borrará también todas sus variantes, fotos y precios. Esta acción <span className="font-bold text-white">no se puede deshacer</span>.
+                </p>
+              </div>
+
+              {deleteStep === 2 && (
+                <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 animate-fadeIn">
+                  <p className="text-sm text-red-400 font-bold uppercase tracking-widest mb-1">Confirmación final</p>
+                  <p className="text-sm text-red-300">
+                    ¿Estás 100% seguro de eliminar este producto del catálogo?
+                  </p>
+                </div>
+              )}
+
+              {deleteError && (
+                <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-sm text-red-400">{deleteError}</div>
+              )}
+            </div>
+
+            <div className="p-6 border-t border-white/5 flex justify-between items-center gap-3 bg-[#1A1A20]">
+              <button 
+                onClick={() => setDeletingProduct(null)} 
+                disabled={deleteStatus === 'deleting'} 
+                className="px-5 py-2.5 text-sm font-bold text-gray-300 hover:text-white transition-colors disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              
+              {deleteStep === 1 ? (
+                <button
+                  onClick={() => setDeleteStep(2)}
+                  className="px-5 py-2.5 bg-red-500/10 hover:bg-red-500/20 text-red-500 text-sm font-bold rounded-xl border border-red-500/20 transition-all"
+                >
+                  Sí, quiero eliminarlo
+                </button>
+              ) : (
+                <button
+                  onClick={handleConfirmDelete}
+                  disabled={deleteStatus === 'deleting'}
+                  className="px-5 py-2.5 bg-red-500 hover:bg-red-600 text-white text-sm font-bold rounded-xl shadow-lg shadow-red-500/20 transition-all disabled:opacity-50 flex items-center gap-2"
+                >
+                  {deleteStatus === 'deleting' ? 'Eliminando...' : 'Eliminar definitivamente'}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ─── Modal Promoción ────────────────────────────────────── */}
       {promoProduct && (

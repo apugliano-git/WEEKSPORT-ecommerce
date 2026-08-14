@@ -62,3 +62,17 @@ export async function clearPromocion(productoId: string): Promise<ApiResponse> {
   }
 }
 
+export async function eliminarProducto(productoId: string): Promise<ApiResponse> {
+  try {
+    const { error } = await supabase
+      .from('productos')
+      .delete()
+      .eq('id', productoId);
+
+    if (error) return { status: 'error', message: error.message };
+    return { status: 'success', message: 'Producto eliminado correctamente.' };
+  } catch (err: any) {
+    return { status: 'error', message: 'Error al eliminar el producto.' };
+  }
+}
+
