@@ -53,7 +53,7 @@ export async function actualizarStockVariante(id: string, nuevoStock: number): P
  */
 export async function crearArticuloCompleto(payload: NuevoArticuloPayload): Promise<ApiResponse> {
   try {
-    const { error } = await supabase.rpc('crear_producto_con_variantes', {
+    const { data, error } = await supabase.rpc('crear_producto_con_variantes', {
       p_nombre: payload.nombre,
       p_descripcion: payload.descripcion,
       p_categoria_id: payload.categoria_id,
@@ -66,6 +66,10 @@ export async function crearArticuloCompleto(payload: NuevoArticuloPayload): Prom
 
     if (error) {
       return { status: 'error', message: `Fallo al registrar el artículo: ${error.message}` };
+    }
+
+    if (data && (data as any).status === 'error') {
+      return { status: 'error', message: `Error en la base de datos: ${(data as any).message}` };
     }
 
     return { status: 'success', message: 'Artículo completo y stock inicial registrados exitosamente en el sistema.' };
