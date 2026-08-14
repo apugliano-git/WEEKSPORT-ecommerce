@@ -44,7 +44,7 @@ CREATE INDEX IF NOT EXISTS idx_productos_activo       ON public.productos (activ
 CREATE TABLE IF NOT EXISTS public.variantes_stock (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   producto_id UUID            NOT NULL REFERENCES public.productos(id) ON DELETE CASCADE,
-  talle       VARCHAR(20)     NOT NULL,  -- 'XS', 'S', 'M', 'L', 'XL', 'XXL'
+  talle       VARCHAR(20)     NOT NULL,  -- 'XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL', '4XL'
   color       VARCHAR(100)    NOT NULL,
   cantidad    INTEGER         NOT NULL DEFAULT 0 CHECK (cantidad >= 0),
   precio      NUMERIC(10, 2)  NOT NULL CHECK (precio >= 0)  -- Precio específico de esta variante

@@ -38,7 +38,7 @@ export async function obtenerMetricasInventario(): Promise<MetricasInventario> {
       }
       
       variantes.forEach((v: any) => {
-        if (v.cantidad > 0 && v.cantidad < 3) {
+        if (v.cantidad === 1) {
           variantesCriticas++;
         }
       });

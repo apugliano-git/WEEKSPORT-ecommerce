@@ -225,7 +225,7 @@ export default function NuevoArticuloPage() {
                 value={tipoTalle}
                 onChange={(e) => setTipoTalle(e.target.value)}
               >
-                <option value="estandar">Estándar (S, M, L, XL, XXL)</option>
+                <option value="estandar">Estándar (XS a 4XL)</option>
                 <option value="unico">Único (Talle Único)</option>
                 <option value="tops">Tops (85/90 a 120+)</option>
                 <option value="sin_talle">Sin talle (Accesorios)</option>

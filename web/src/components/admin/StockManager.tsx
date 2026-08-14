@@ -11,6 +11,20 @@ interface StockManagerProps {
   initialSearch?: string;
 }
 
+const SIZE_ORDER = ['XXS', 'XS', 'S', 'M', 'L', 'XL', 'XXL', '2XL', '3XL', '4XL', '5XL', '85', '90', '95', '100', '105', '110', '115', '120', '120+'];
+
+function sortVariants(variants: any[]) {
+  return [...variants].sort((a, b) => {
+    const idxA = SIZE_ORDER.indexOf(a.talle.toUpperCase());
+    const idxB = SIZE_ORDER.indexOf(b.talle.toUpperCase());
+    
+    if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+    if (idxA !== -1) return -1;
+    if (idxB !== -1) return 1;
+    return a.talle.localeCompare(b.talle);
+  });
+}
+
 function StockVariantRow({ variante }: { variante: any }) {
   const [currentStock, setCurrentStock] = useState(variante.cantidad);
   const [inputValue, setInputValue] = useState<number | ''>(variante.cantidad);
@@ -188,7 +202,7 @@ function MobileProductSheetContent({ product }: { product: Producto }) {
       {product?.variantes_stock?.length === 0 ? (
         <p className="text-sm text-gray-500 text-center py-4">Este producto no tiene variantes.</p>
       ) : (
-        product?.variantes_stock?.map(v => {
+        sortVariants(product?.variantes_stock || []).map(v => {
           const isCritical = v.cantidad < 3;
           const isOutOfStock = v.cantidad === 0;
           return (
@@ -221,7 +235,7 @@ function MobileProductSheetContent({ product }: { product: Producto }) {
 function StockProductRow({ product, categoryMap }: { product: Producto, categoryMap: Record<string, string> }) {
   const [isExpanded, setIsExpanded] = useState(false);
   
-  const variants = product.variantes_stock || [];
+  const variants = sortVariants(product.variantes_stock || []);
   const totalStock = variants.reduce((sum, v) => sum + v.cantidad, 0);
   const isCritical = totalStock < 3;
   const isOutOfStockTotal = totalStock === 0;

@@ -56,7 +56,7 @@ export default async function AdminDashboardPage() {
             </div>
 
             <div className={`bg-[#1A1A20] p-4 sm:p-6 rounded-2xl border flex flex-col shadow-lg shadow-black/50 transition-colors ${metricas.variantesCriticas > 0 ? 'border-amber-500/50 bg-amber-500/5' : 'border-white/5'}`}>
-              <span className={`text-[10px] sm:text-xs font-bold uppercase tracking-wider mb-2 ${metricas.variantesCriticas > 0 ? 'text-amber-400' : 'text-zinc-500'}`}>Variantes Críticas (&lt;3)</span>
+              <span className={`text-[10px] sm:text-xs font-bold uppercase tracking-wider mb-2 ${metricas.variantesCriticas > 0 ? 'text-amber-400' : 'text-zinc-500'}`}>Variantes Críticas (=1)</span>
               <span className={`text-3xl sm:text-4xl font-extrabold tracking-tighter ${metricas.variantesCriticas > 0 ? 'text-amber-400' : 'text-white'}`}>{metricas.variantesCriticas}</span>
             </div>
 

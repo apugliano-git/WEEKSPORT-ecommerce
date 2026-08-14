@@ -43,7 +43,7 @@ function VarianteRow({
   const [precio, setPrecio] = useState(variante.precio);
   const [visible, setVisible] = useState(variante.visible_en_catalogo);
 
-  const isCritical = variante.cantidad < 3;
+  const isCritical = variante.cantidad === 1;
   const isOutOfStock = variante.cantidad === 0;
 
   const handleCancel = () => {
@@ -346,11 +346,18 @@ function ProductRow({
   const [isExpanded, setIsExpanded] = useState(false);
   const [showNuevaVariante, setShowNuevaVariante] = useState(false);
 
-  const variants: VarianteStock[] = product.variantes_stock || [];
-
   const tallesDisponibles = tallesPorTipo
     .filter(t => t.tipo_talle === product.tipo_talle)
     .map(t => t.talle);
+
+  const variants: VarianteStock[] = [...(product.variantes_stock || [])].sort((a, b) => {
+    const idxA = tallesDisponibles.indexOf(a.talle);
+    const idxB = tallesDisponibles.indexOf(b.talle);
+    if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+    if (idxA !== -1) return -1;
+    if (idxB !== -1) return 1;
+    return a.talle.localeCompare(b.talle);
+  });
 
   const totalStock = variants.reduce((sum, v) => sum + v.cantidad, 0);
 
@@ -979,7 +986,7 @@ export function ProductTable({ productos, categorias, tallesPorTipo }: ProductTa
                   <option value="unico">Talle Único</option>
                   <option value="sin_talle">Sin Talle</option>
                   <option value="tops">Tops (85/90, etc.)</option>
-                  <option value="estandar">Estándar (XS a XXL)</option>
+                  <option value="estandar">Estándar (XS a 4XL)</option>
                 </select>
                 <p className="text-xs text-gray-500 mt-2">Cambiar el tipo de talle no modifica las variantes ya creadas, solo afecta las opciones disponibles al agregar nuevas variantes.</p>
               </div>
