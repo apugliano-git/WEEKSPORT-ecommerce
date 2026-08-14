@@ -266,13 +266,45 @@ export default function NuevoArticuloPage() {
                 {archivosImagenes.length > 0 && !isUploading && (
                   <div className="mt-4 space-y-2">
                     <p className="text-xs text-emerald-400 font-semibold">{archivosImagenes.length} archivo(s) seleccionado(s):</p>
+                    <p className="text-[10px] text-zinc-500">El orden en el que aparecen aquí será el orden en la tienda.</p>
                     <ul className="text-sm space-y-1">
                       {archivosImagenes.map((file, i) => (
-                        <li key={i} className="flex justify-between items-center bg-zinc-900 px-3 py-1.5 rounded-md border border-zinc-800">
-                          <span className="truncate text-zinc-300 max-w-[200px]" title={file.name}>{file.name}</span>
-                          <button type="button" onClick={() => removeFile(i)} className="text-red-400 hover:text-red-300 ml-2 shrink-0">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
-                          </button>
+                        <li key={i} className="flex justify-between items-center bg-zinc-900 px-3 py-1.5 rounded-md border border-zinc-800 group">
+                          <span className="truncate text-zinc-300 max-w-[150px] md:max-w-[200px]" title={file.name}>
+                            <span className="text-zinc-500 mr-2 text-xs">{i + 1}.</span>{file.name}
+                          </span>
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              disabled={i === 0}
+                              onClick={() => {
+                                const newFiles = [...archivosImagenes];
+                                [newFiles[i - 1], newFiles[i]] = [newFiles[i], newFiles[i - 1]];
+                                setArchivosImagenes(newFiles);
+                              }}
+                              className="text-zinc-500 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed p-1"
+                              title="Subir"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m18 15-6-6-6 6"/></svg>
+                            </button>
+                            <button
+                              type="button"
+                              disabled={i === archivosImagenes.length - 1}
+                              onClick={() => {
+                                const newFiles = [...archivosImagenes];
+                                [newFiles[i], newFiles[i + 1]] = [newFiles[i + 1], newFiles[i]];
+                                setArchivosImagenes(newFiles);
+                              }}
+                              className="text-zinc-500 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed p-1"
+                              title="Bajar"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                            </button>
+                            <div className="w-px h-4 bg-zinc-700 mx-1"></div>
+                            <button type="button" onClick={() => removeFile(i)} className="text-red-400 hover:text-red-300 p-1 shrink-0" title="Eliminar">
+                              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                            </button>
+                          </div>
                         </li>
                       ))}
                     </ul>

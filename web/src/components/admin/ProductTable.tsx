@@ -1357,13 +1357,46 @@ export function ProductTable({ productos, categorias, tallesPorTipo }: ProductTa
                       {editingProduct.imagenes.map((img, i) => (
                         <div key={i} className="relative group rounded-lg overflow-hidden border border-white/10 aspect-square bg-zinc-900">
                           <img src={img} alt={`Imagen ${i}`} className="w-full h-full object-cover" />
+                          
+                          {/* Botón Borrar */}
                           <button 
                             type="button" 
                             onClick={() => setEditingProduct({ ...editingProduct, imagenes: editingProduct.imagenes.filter((_, idx) => idx !== i) })}
-                            className="absolute top-1 right-1 bg-red-500/80 text-white p-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500"
+                            className="absolute top-1 right-1 bg-red-500/80 text-white p-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500 z-10"
+                            title="Eliminar imagen"
                           >
                             <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
                           </button>
+
+                          {/* Controles de Orden (Mover Izquierda/Derecha) */}
+                          <div className="absolute bottom-1 left-1 right-1 flex justify-between opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                            <button
+                              type="button"
+                              disabled={i === 0}
+                              onClick={() => {
+                                const newImgs = [...editingProduct.imagenes];
+                                [newImgs[i - 1], newImgs[i]] = [newImgs[i], newImgs[i - 1]];
+                                setEditingProduct({ ...editingProduct, imagenes: newImgs });
+                              }}
+                              className="bg-black/60 hover:bg-black/80 text-white p-1 rounded disabled:opacity-30 disabled:cursor-not-allowed"
+                              title="Mover a la izquierda"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+                            </button>
+                            <button
+                              type="button"
+                              disabled={i === editingProduct.imagenes.length - 1}
+                              onClick={() => {
+                                const newImgs = [...editingProduct.imagenes];
+                                [newImgs[i], newImgs[i + 1]] = [newImgs[i + 1], newImgs[i]];
+                                setEditingProduct({ ...editingProduct, imagenes: newImgs });
+                              }}
+                              className="bg-black/60 hover:bg-black/80 text-white p-1 rounded disabled:opacity-30 disabled:cursor-not-allowed"
+                              title="Mover a la derecha"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+                            </button>
+                          </div>
                         </div>
                       ))}
                     </div>
