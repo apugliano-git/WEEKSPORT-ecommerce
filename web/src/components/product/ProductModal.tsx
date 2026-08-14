@@ -53,17 +53,33 @@ export function ProductModal({ producto, similares }: ProductModalProps) {
         "
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Botón de cierre */}
+        {/* Botón de cierre / Atrás */}
         <button
           onClick={handleClose}
-          aria-label="Cerrar"
+          aria-label="Volver"
           className="
-            absolute top-3 right-3 z-10
-            w-8 h-8 flex items-center justify-center
-            rounded-full bg-white/10 hover:bg-white/20
-            text-white transition-colors
+            fixed top-4 right-4 z-[100]
+            md:absolute md:top-3 md:right-3 md:z-10
+            w-10 h-10 md:w-8 md:h-8 flex items-center justify-center
+            rounded-full bg-black/60 md:bg-white/10 backdrop-blur-md hover:bg-white/20
+            text-white border border-white/10 md:border-transparent transition-colors
           "
         >
+          {/* Icono de flecha < (Back) en móvil, X en desktop (opcional, pero ponemos flecha como pidió) */}
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="md:hidden"
+          >
+            <path d="m15 18-6-6 6-6" />
+          </svg>
           <svg
             xmlns="http://www.w3.org/2000/svg"
             width="16"
@@ -74,6 +90,7 @@ export function ProductModal({ producto, similares }: ProductModalProps) {
             strokeWidth="2.5"
             strokeLinecap="round"
             strokeLinejoin="round"
+            className="hidden md:block"
           >
             <path d="M18 6 6 18" />
             <path d="m6 6 12 12" />
