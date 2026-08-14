@@ -61,8 +61,13 @@ export default function NuevoArticuloPage() {
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
-      setArchivosImagenes(Array.from(e.target.files));
+      const newFiles = Array.from(e.target.files);
+      setArchivosImagenes(prev => [...prev, ...newFiles]);
     }
+  };
+
+  const removeFile = (index: number) => {
+    setArchivosImagenes(prev => prev.filter((_, i) => i !== index));
   };
 
   const agregarColor = () => {
@@ -259,7 +264,19 @@ export default function NuevoArticuloPage() {
                   className="w-full text-sm text-zinc-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-zinc-800 file:text-zinc-300 hover:file:bg-zinc-700 transition-all disabled:opacity-50 cursor-pointer"
                 />
                 {archivosImagenes.length > 0 && !isUploading && (
-                  <p className="text-xs text-emerald-400 mt-3 font-semibold">{archivosImagenes.length} archivo(s) listo(s) para carga</p>
+                  <div className="mt-4 space-y-2">
+                    <p className="text-xs text-emerald-400 font-semibold">{archivosImagenes.length} archivo(s) seleccionado(s):</p>
+                    <ul className="text-sm space-y-1">
+                      {archivosImagenes.map((file, i) => (
+                        <li key={i} className="flex justify-between items-center bg-zinc-900 px-3 py-1.5 rounded-md border border-zinc-800">
+                          <span className="truncate text-zinc-300 max-w-[200px]" title={file.name}>{file.name}</span>
+                          <button type="button" onClick={() => removeFile(i)} className="text-red-400 hover:text-red-300 ml-2 shrink-0">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
                 )}
               </div>
             </div>
@@ -318,7 +335,7 @@ export default function NuevoArticuloPage() {
               </p>
 
               {/* Input de color */}
-              <div className="flex gap-2 mb-4">
+              <div className="flex gap-2 mb-4 overflow-hidden">
                 <input
                   ref={colorInputRef}
                   type="text"
@@ -327,13 +344,13 @@ export default function NuevoArticuloPage() {
                   onKeyDown={handleColorKeyDown}
                   placeholder="Ej: Negro, Azul marino..."
                   maxLength={MAX_COLOR_LENGTH}
-                  className="flex-1 p-3 bg-zinc-950 border border-zinc-800 rounded-xl focus:ring-1 focus:ring-[#F400A1] focus:border-[#F400A1] outline-none transition-colors text-sm placeholder-zinc-600"
+                  className="min-w-0 flex-1 p-3 bg-zinc-950 border border-zinc-800 rounded-xl focus:ring-1 focus:ring-[#F400A1] focus:border-[#F400A1] outline-none transition-colors text-sm placeholder-zinc-600"
                 />
                 <button
                   type="button"
                   onClick={agregarColor}
                   disabled={!inputColor.trim()}
-                  className="px-4 py-3 bg-[#F400A1] hover:bg-[#D000A0] disabled:bg-zinc-800 disabled:text-zinc-600 text-white rounded-xl font-bold text-sm transition-colors flex items-center gap-1.5"
+                  className="shrink-0 px-4 py-3 bg-[#F400A1] hover:bg-[#D000A0] disabled:bg-zinc-800 disabled:text-zinc-600 text-white rounded-xl font-bold text-sm transition-colors flex items-center gap-1.5"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
                   Agregar

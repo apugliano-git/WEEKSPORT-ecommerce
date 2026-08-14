@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Producto, Categoria, VarianteStock } from '@/types'
 import { actualizarProducto, setPromocion, clearPromocion, eliminarProducto } from '@/lib/productoService'
 import { crearVariante, actualizarVariante, eliminarVariante } from '@/lib/variantesService'
+import { subirImagenProducto } from '@/lib/inventarioService'
 import { Switch, BottomSheet, Badge, Button } from '@/components/admin/ui'
 
 // Normaliza un nombre de color: primera letra mayúscula, resto minúsculas
@@ -867,9 +868,12 @@ export function ProductTable({ productos, categorias, tallesPorTipo }: ProductTa
     genero: string;
     tipo_talle: string;
     activo: boolean;
+    imagenes: string[];
   } | null>(null)
   const [editStatus, setEditStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle')
   const [editError, setEditError] = useState('')
+  const [archivosImagenes, setArchivosImagenes] = useState<File[]>([])
+  const [isUploadingImages, setIsUploadingImages] = useState(false)
   const [selectedProductSheet, setSelectedProductSheet] = useState<Producto | null>(null)
   const [promoProduct, setPromoProduct] = useState<Producto | null>(null)
   const [promoInput, setPromoInput] = useState('')
@@ -928,7 +932,9 @@ export function ProductTable({ productos, categorias, tallesPorTipo }: ProductTa
       genero: product.genero || 'Unisex',
       tipo_talle: product.tipo_talle,
       activo: product.activo,
+      imagenes: product.imagenes || [],
     });
+    setArchivosImagenes([]);
     setEditStatus('idle');
     setEditError('');
   };
@@ -1338,28 +1344,117 @@ export function ProductTable({ productos, categorias, tallesPorTipo }: ProductTa
                 </button>
                 <span className="text-sm font-medium text-gray-300">{editingProduct.activo ? 'Producto visible en catálogo' : 'Producto oculto'}</span>
               </div>
+
+              {/* Manejo de Imágenes */}
+              <div className="pt-4 border-t border-white/10">
+                <label className="block text-sm font-medium text-gray-400 mb-3">Imágenes del Producto</label>
+                
+                {/* Imágenes Actuales */}
+                {editingProduct.imagenes.length > 0 && (
+                  <div className="mb-4">
+                    <p className="text-xs text-gray-500 mb-2">Imágenes actuales ({editingProduct.imagenes.length}):</p>
+                    <div className="grid grid-cols-4 gap-3">
+                      {editingProduct.imagenes.map((img, i) => (
+                        <div key={i} className="relative group rounded-lg overflow-hidden border border-white/10 aspect-square bg-zinc-900">
+                          <img src={img} alt={`Imagen ${i}`} className="w-full h-full object-cover" />
+                          <button 
+                            type="button" 
+                            onClick={() => setEditingProduct({ ...editingProduct, imagenes: editingProduct.imagenes.filter((_, idx) => idx !== i) })}
+                            className="absolute top-1 right-1 bg-red-500/80 text-white p-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Subir Nuevas */}
+                <div className="mt-2">
+                  <p className="text-xs text-gray-500 mb-2">Añadir nuevas imágenes:</p>
+                  <input 
+                    type="file" 
+                    multiple
+                    accept="image/*"
+                    onChange={(e) => {
+                      if (e.target.files) {
+                        const newFiles = Array.from(e.target.files);
+                        setArchivosImagenes(prev => [...prev, ...newFiles]);
+                      }
+                    }}
+                    disabled={isUploadingImages || editStatus === 'saving'}
+                    className="w-full text-sm text-zinc-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-zinc-800 file:text-zinc-300 hover:file:bg-zinc-700 transition-all disabled:opacity-50 cursor-pointer mb-2"
+                  />
+                  {archivosImagenes.length > 0 && (
+                    <ul className="text-sm space-y-1">
+                      {archivosImagenes.map((file, i) => (
+                        <li key={i} className="flex justify-between items-center bg-zinc-900 px-3 py-1.5 rounded-md border border-zinc-800">
+                          <span className="truncate text-zinc-300 max-w-[200px]" title={file.name}>{file.name}</span>
+                          <button type="button" onClick={() => setArchivosImagenes(prev => prev.filter((_, idx) => idx !== i))} className="text-red-400 hover:text-red-300 ml-2 shrink-0">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </div>
+
               {editStatus === 'error' && (
                 <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-sm text-red-400">{editError}</div>
               )}
             </div>
 
             <div className="p-6 border-t border-white/5 flex justify-end gap-3 bg-[#1A1A20]">
-              <button onClick={() => setEditingProduct(null)} disabled={editStatus === 'saving'}
+              <button onClick={() => setEditingProduct(null)} disabled={editStatus === 'saving' || isUploadingImages}
                 className="px-5 py-2.5 text-sm font-bold text-gray-300 hover:text-white transition-colors disabled:opacity-50">Cancelar</button>
               <button
                 onClick={async () => {
-                  setEditStatus('saving'); setEditError('');
+                  setEditStatus('saving'); 
+                  setEditError('');
+                  setIsUploadingImages(true);
+                  
+                  let newUrls: string[] = [];
+                  if (archivosImagenes.length > 0) {
+                    for (const file of archivosImagenes) {
+                      const res = await subirImagenProducto(file);
+                      if (res.error) {
+                        setEditStatus('error');
+                        setEditError(res.error);
+                        setIsUploadingImages(false);
+                        return;
+                      }
+                      if (res.url) newUrls.push(res.url);
+                    }
+                  }
+                  
+                  const finalImages = [...editingProduct.imagenes, ...newUrls];
+
                   const res = await actualizarProducto(editingProduct.id, {
-                    nombre: editingProduct.nombre, descripcion: editingProduct.descripcion,
-                    categoria_id: editingProduct.categoria_id, genero: editingProduct.genero,
-                    tipo_talle: editingProduct.tipo_talle, activo: editingProduct.activo,
+                    nombre: editingProduct.nombre, 
+                    descripcion: editingProduct.descripcion,
+                    categoria_id: editingProduct.categoria_id, 
+                    genero: editingProduct.genero,
+                    tipo_talle: editingProduct.tipo_talle, 
+                    activo: editingProduct.activo,
+                    imagenes: finalImages,
                   });
-                  if (res.status === 'success') { setEditStatus('success'); setEditingProduct(null); router.refresh(); }
-                  else { setEditStatus('error'); setEditError(res.message); }
+                  
+                  setIsUploadingImages(false);
+                  if (res.status === 'success') { 
+                    setEditStatus('success'); 
+                    setEditingProduct(null); 
+                    setArchivosImagenes([]);
+                    router.refresh(); 
+                  } else { 
+                    setEditStatus('error'); 
+                    setEditError(res.message); 
+                  }
                 }}
-                disabled={editStatus === 'saving' || !editingProduct.nombre || !editingProduct.categoria_id}
+                disabled={editStatus === 'saving' || isUploadingImages || !editingProduct.nombre || !editingProduct.categoria_id}
                 className="px-5 py-2.5 bg-[#F400A1] hover:bg-[#D000A0] text-white text-sm font-bold rounded-xl shadow-lg shadow-[#F400A1]/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
-                {editStatus === 'saving' ? 'Guardando...' : 'Guardar Cambios'}
+                {isUploadingImages ? 'Subiendo imágenes...' : editStatus === 'saving' ? 'Guardando...' : 'Guardar Cambios'}
               </button>
             </div>
           </div>

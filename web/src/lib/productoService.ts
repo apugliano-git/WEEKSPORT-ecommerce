@@ -15,6 +15,7 @@ export interface DatosProductoActualizado {
   genero?: string;
   tipo_talle: string;
   activo: boolean;
+  imagenes?: string[];
 }
 
 export async function actualizarProducto(productoId: string, datos: DatosProductoActualizado): Promise<ApiResponse> {
