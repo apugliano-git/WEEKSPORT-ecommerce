@@ -18,7 +18,11 @@ export function CatalogClient({ productos, categorias, activeCategoryId = null }
     let result = productos;
     
     if (activeCategoryId) {
-      result = result.filter(p => p.categoria_id === activeCategoryId)
+      if (activeCategoryId === 'promociones') {
+        result = result.filter(p => p.precio_promocional && p.precio_promocional > 0);
+      } else {
+        result = result.filter(p => p.categoria_id === activeCategoryId);
+      }
     }
     
     if (searchQuery.trim() !== '') {
