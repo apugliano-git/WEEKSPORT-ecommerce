@@ -28,13 +28,8 @@ export default function LoginPage() {
         return;
       }
 
-      // Crucial para forzar a Next.js a leer las nuevas cookies de sesión.
-      router.refresh();
-
-      // Retraso controlado para dar holgura al store de cookies del navegador.
-      setTimeout(() => {
-        router.push('/admin');
-      }, 100);
+      // Crucial para forzar a Next.js a recargar el middleware con las nuevas cookies.
+      window.location.href = '/admin';
     } catch (err) {
       setError('Ocurrió un error inesperado al iniciar sesión.');
     } finally {
