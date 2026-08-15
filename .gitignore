@@ -44,3 +44,5 @@ Thumbs.db
 
 # --- Supabase (si usás CLI local en el futuro) ---
 .supabase/
+
+docs/DERA.md

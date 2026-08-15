@@ -36,12 +36,14 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
     return arr
   }
 
-  // Helper para filtrar variantes
+  // Helper para filtrar variantes y descartar sin stock
   function filterVisibleVariants(prods: any[]): Producto[] {
     return prods.map(prod => ({
       ...prod,
       variantes_stock: (prod.variantes_stock || []).filter((v: any) => v.visible_en_catalogo)
-    }));
+    })).filter(prod => 
+      prod.variantes_stock.reduce((acc: number, v: any) => acc + v.cantidad, 0) > 0
+    );
   }
 
   let similares: Producto[] = []

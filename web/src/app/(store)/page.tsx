@@ -33,11 +33,13 @@ export default async function HomePage() {
 
   const productosBrutos = productosData || [];
   
-  // Filtrar variantes para mostrar solo las visibles en el catálogo público
+  // Filtrar variantes para mostrar solo las visibles en el catálogo público y excluir productos sin stock
   const productos = productosBrutos.map(prod => ({
     ...prod,
     variantes_stock: (prod.variantes_stock || []).filter((v: any) => v.visible_en_catalogo)
-  }));
+  })).filter(prod => 
+    prod.variantes_stock.reduce((acc: number, v: any) => acc + v.cantidad, 0) > 0
+  );
 
   return (
     <main className="flex-1 w-full flex flex-col">

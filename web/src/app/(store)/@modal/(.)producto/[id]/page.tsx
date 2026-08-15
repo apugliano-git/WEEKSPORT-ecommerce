@@ -47,7 +47,9 @@ export default async function InterceptedProductPage({
       variantes_stock: (prod.variantes_stock || []).filter(
         (v: any) => v.visible_en_catalogo
       ),
-    }));
+    })).filter(prod => 
+      prod.variantes_stock.reduce((acc: number, v: any) => acc + v.cantidad, 0) > 0
+    );
   }
 
   let similares: Producto[] = [];
