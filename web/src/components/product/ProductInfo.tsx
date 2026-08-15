@@ -3,7 +3,6 @@
 import React, { useState } from 'react'
 import { Producto, VarianteStock } from '@/types'
 import { useCart } from '@/context/CartContext'
-import { Toast } from '@/components/ui/Toast'
 
 interface ProductInfoProps {
   producto: Producto
@@ -22,7 +21,6 @@ export function ProductInfo({ producto }: ProductInfoProps) {
   const [selectedColor, setSelectedColor] = useState<string>(varianteInicial?.color || '')
   const [selectedTalle, setSelectedTalle] = useState<string>('')
   const [quantity, setQuantity] = useState<number>(1)
-  const [showToast, setShowToast] = useState(false)
 
   const selectedVariante = variantes.find(
     v => v.talle === selectedTalle && v.color === selectedColor
@@ -49,9 +47,8 @@ export function ProductInfo({ producto }: ProductInfoProps) {
   const handleAddToCart = () => {
     if (selectedVariante && selectedVariante.cantidad > 0) {
       addItem(producto, selectedVariante, quantity)
-      // Reset quantity or show toast
+      // Reset quantity
       setQuantity(1)
-      setShowToast(true)
     }
   }
 
@@ -222,7 +219,6 @@ export function ProductInfo({ producto }: ProductInfoProps) {
         {buttonText}
       </button>
 
-      {/* Descripción */}
       {producto.descripcion && (
         <div className="mt-10 md:mt-12">
           <h3 className="text-sm font-medium text-white/70 uppercase tracking-widest mb-4">
@@ -233,12 +229,6 @@ export function ProductInfo({ producto }: ProductInfoProps) {
           </div>
         </div>
       )}
-
-      <Toast 
-        isVisible={showToast} 
-        onClose={() => setShowToast(false)} 
-        message={`Agregado: ${producto.nombre}`}
-      />
     </div>
   )
 }
