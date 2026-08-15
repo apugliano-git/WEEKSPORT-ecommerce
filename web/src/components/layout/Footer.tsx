@@ -60,9 +60,14 @@ export async function Footer() {
               </svg>
             </div>
             <h4 className="font-display uppercase tracking-wide text-sm text-white mb-2">Ubicación</h4>
-            <p className="font-sans text-gray-400 text-sm max-w-[160px]">
+            <a 
+              href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(direccion)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-sans text-gray-400 text-sm max-w-[160px] hover:text-[#F400A1] transition-colors"
+            >
               {direccion}
-            </p>
+            </a>
           </div>
 
           {/* Bloque 4 - Contacto */}
