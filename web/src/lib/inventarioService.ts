@@ -137,3 +137,34 @@ export async function subirImagenProducto(file: File): Promise<{ url?: string; e
     return { error: 'Excepción interna al procesar la subida de medios.' };
   }
 }
+
+/**
+ * Agrega un nuevo color a un producto existente (creando variantes para todos los talles).
+ */
+export async function agregarColorAProducto(
+  productoId: string,
+  color: string,
+  precio: number,
+  cantidadInicial: number = 0
+): Promise<{ status: 'success' | 'error'; message: string }> {
+  try {
+    const { data, error } = await supabase.rpc('agregar_color_a_producto', {
+      p_producto_id: productoId,
+      p_color: color,
+      p_precio: precio,
+      p_cantidad_inicial: cantidadInicial,
+    });
+
+    if (error) {
+      return { status: 'error', message: error.message };
+    }
+
+    if (data?.status === 'error') {
+      return { status: 'error', message: data.message || 'Error al agregar el color.' };
+    }
+
+    return { status: 'success', message: 'Color agregado con éxito.' };
+  } catch (err: any) {
+    return { status: 'error', message: 'Fallo de red o excepción interna al agregar color.' };
+  }
+}

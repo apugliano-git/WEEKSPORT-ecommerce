@@ -1,9 +1,20 @@
 'use client'
 
 import React, { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Producto, Categoria } from '@/types'
-import { actualizarStockVariante } from '@/lib/inventarioService'
+import { actualizarStockVariante, agregarColorAProducto } from '@/lib/inventarioService'
+import { eliminarProducto } from '@/lib/productoService'
 import { TableShell, Select, Input, Badge, Button, BottomSheet, Switch } from '@/components/admin/ui'
+
+// Normaliza un nombre de color: primera letra mayúscula, resto minúsculas
+function capitalizarColor(s: string): string {
+  const trimmed = s.trim();
+  if (!trimmed) return '';
+  return trimmed.charAt(0).toUpperCase() + trimmed.slice(1).toLowerCase();
+}
+
+const MAX_COLOR_LENGTH = 20;
 
 interface StockManagerProps {
   productos: Producto[];
@@ -190,8 +201,155 @@ function MobileVariantAdjust({ variante, onBack }: { variante: any, onBack: () =
   )
 }
 
-function MobileProductSheetContent({ product }: { product: Producto }) {
+function AgregarColorRow({
+  productoId,
+  onSuccess,
+  onCancel,
+}: {
+  productoId: string;
+  onSuccess: () => void;
+  onCancel: () => void;
+}) {
+  const [color, setColor] = useState('');
+  const [precio, setPrecio] = useState(0);
+  const [cantidad, setCantidad] = useState(0);
+  const [status, setStatus] = useState<'idle' | 'saving' | 'error'>('idle');
+  const [errorMsg, setErrorMsg] = useState('');
+
+  const handleSave = async () => {
+    const colorFinal = capitalizarColor(color);
+    if (!colorFinal || precio <= 0) {
+      setStatus('error');
+      setErrorMsg('Completá color y precio.');
+      return;
+    }
+    setStatus('saving');
+    setErrorMsg('');
+    const res = await agregarColorAProducto(productoId, colorFinal, precio, cantidad);
+    if (res.status === 'success') {
+      onSuccess();
+    } else {
+      setStatus('error');
+      setErrorMsg(res.message);
+    }
+  };
+
+  return (
+    <tr className="bg-emerald-500/5 border border-emerald-500/20">
+      <td className="px-3 py-2 text-gray-500 font-mono text-xs italic text-center" colSpan={2}>
+        <div className="flex flex-col gap-1">
+          <span className="text-xs font-bold text-emerald-400 uppercase">Nuevo Color</span>
+          <span className="text-[10px] text-gray-500">Aplica a todos los talles</span>
+        </div>
+      </td>
+      <td className="px-3 py-2">
+        <input
+          type="text"
+          placeholder="Ej: Negro"
+          value={color}
+          onChange={e => setColor(e.target.value.slice(0, MAX_COLOR_LENGTH))}
+          onBlur={e => setColor(capitalizarColor(e.target.value))}
+          maxLength={MAX_COLOR_LENGTH}
+          className="w-full bg-[#0F0F12] text-white border border-white/10 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500 text-center"
+        />
+      </td>
+      <td className="px-3 py-2 text-center">
+        <input
+          type="number"
+          min="0"
+          placeholder="Cant. inicial"
+          value={cantidad || ''}
+          onChange={e => setCantidad(Number(e.target.value))}
+          className="w-20 mx-auto bg-[#0F0F12] text-white border border-white/10 rounded-lg px-2 py-1 text-xs text-center focus:outline-none focus:ring-1 focus:ring-emerald-500"
+        />
+      </td>
+      <td className="px-3 py-2 text-center">
+        <input
+          type="number"
+          min="0"
+          step="0.01"
+          placeholder="Precio"
+          value={precio || ''}
+          onChange={e => setPrecio(Number(e.target.value))}
+          className="w-24 mx-auto bg-[#0F0F12] text-white border border-white/10 rounded-lg px-2 py-1 text-xs text-right focus:outline-none focus:ring-1 focus:ring-emerald-500"
+        />
+      </td>
+      <td className="px-3 py-2 text-center">
+        <div className="flex items-center justify-center gap-1.5 flex-col">
+          <div className="flex gap-1.5">
+            <button onClick={handleSave} disabled={status === 'saving'} className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold rounded-lg transition-colors disabled:opacity-50">
+              {status === 'saving' ? '...' : 'Crear'}
+            </button>
+            <button onClick={onCancel} disabled={status === 'saving'} className="px-2.5 py-1 bg-zinc-700 hover:bg-zinc-600 text-white text-[11px] font-bold rounded-lg transition-colors disabled:opacity-50">
+              Cancelar
+            </button>
+          </div>
+          {status === 'error' && <span className="text-[10px] text-red-400 max-w-[120px] text-center leading-tight">{errorMsg}</span>}
+        </div>
+      </td>
+    </tr>
+  );
+}
+
+function MobileAgregarColor({
+  productoId,
+  onSuccess,
+  onCancel,
+}: {
+  productoId: string;
+  onSuccess: () => void;
+  onCancel: () => void;
+}) {
+  const [color, setColor] = useState('');
+  const [precio, setPrecio] = useState(0);
+  const [cantidad, setCantidad] = useState(0);
+  const [status, setStatus] = useState<'idle' | 'saving' | 'error'>('idle');
+  const [errorMsg, setErrorMsg] = useState('');
+
+  const handleSave = async () => {
+    const colorFinal = capitalizarColor(color);
+    if (!colorFinal || precio <= 0) {
+      setStatus('error'); setErrorMsg('Completá color y precio.'); return;
+    }
+    setStatus('saving'); setErrorMsg('');
+    const res = await agregarColorAProducto(productoId, colorFinal, precio, cantidad);
+    if (res.status === 'success') { onSuccess(); }
+    else { setStatus('error'); setErrorMsg(res.message); }
+  };
+
+  return (
+    <div className="p-4 rounded-xl border border-emerald-500/20 bg-emerald-500/5 flex flex-col gap-3">
+      <div>
+        <p className="text-xs font-bold text-emerald-400 uppercase tracking-widest">Nuevo Color</p>
+        <p className="text-[10px] text-gray-400">Se creará en todos los talles.</p>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div className="col-span-2">
+          <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1 block">Color</label>
+          <input type="text" placeholder="Ej: Negro" value={color} onChange={e => setColor(e.target.value.slice(0, MAX_COLOR_LENGTH))} onBlur={e => setColor(capitalizarColor(e.target.value))} maxLength={MAX_COLOR_LENGTH} className="w-full bg-[#0F0F12] text-white border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500" />
+        </div>
+        <div>
+          <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1 block">Precio</label>
+          <input type="number" min="0" step="0.01" placeholder="0" value={precio || ''} onChange={e => setPrecio(Number(e.target.value))} className="w-full bg-[#0F0F12] text-white border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500" />
+        </div>
+        <div>
+          <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1 block">Stock inicial / talle</label>
+          <input type="number" min="0" placeholder="0" value={cantidad || ''} onChange={e => setCantidad(Number(e.target.value))} className="w-full bg-[#0F0F12] text-white border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500" />
+        </div>
+      </div>
+      {status === 'error' && <p className="text-xs text-red-400">{errorMsg}</p>}
+      <div className="flex gap-2">
+        <Button variant="primary" size="sm" onClick={handleSave} isLoading={status === 'saving'} disabled={status === 'saving'}>Crear</Button>
+        <Button variant="ghost" size="sm" onClick={onCancel} disabled={status === 'saving'}>Cancelar</Button>
+      </div>
+    </div>
+  );
+}
+
+function MobileProductSheetContent({ product, onDelete }: { product: Producto, onDelete: () => void }) {
+  const router = useRouter();
   const [selectedVariant, setSelectedVariant] = useState<any | null>(null);
+  const [showAgregarColor, setShowAgregarColor] = useState(false);
 
   if (selectedVariant) {
     return <MobileVariantAdjust variante={selectedVariant} onBack={() => setSelectedVariant(null)} />;
@@ -199,7 +357,7 @@ function MobileProductSheetContent({ product }: { product: Producto }) {
 
   return (
     <div className="flex flex-col gap-3 pb-6">
-      {product?.variantes_stock?.length === 0 ? (
+      {product?.variantes_stock?.length === 0 && !showAgregarColor ? (
         <p className="text-sm text-gray-500 text-center py-4">Este producto no tiene variantes.</p>
       ) : (
         sortVariants(product?.variantes_stock || []).map(v => {
@@ -228,12 +386,41 @@ function MobileProductSheetContent({ product }: { product: Producto }) {
           )
         })
       )}
+
+      {showAgregarColor && (
+        <MobileAgregarColor
+          productoId={product.id}
+          onSuccess={() => { setShowAgregarColor(false); router.refresh(); }}
+          onCancel={() => setShowAgregarColor(false)}
+        />
+      )}
+
+      <div className="flex flex-col gap-2 pt-2 border-t border-white/5 mt-2">
+        {!showAgregarColor && (
+          <button
+            onClick={() => setShowAgregarColor(true)}
+            className="flex items-center justify-center gap-2 px-4 py-3 text-sm font-bold text-emerald-400 border border-emerald-500/30 bg-emerald-500/5 hover:bg-emerald-500/10 rounded-xl transition-colors"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+            Agregar color
+          </button>
+        )}
+        <button
+          onClick={onDelete}
+          className="flex items-center justify-center gap-2 px-4 py-3 text-sm font-bold text-red-400 border border-red-500/10 bg-red-500/5 hover:bg-red-500/10 rounded-xl transition-colors"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+          Eliminar producto
+        </button>
+      </div>
     </div>
   )
 }
 
-function StockProductRow({ product, categoryMap }: { product: Producto, categoryMap: Record<string, string> }) {
+function StockProductRow({ product, categoryMap, onDelete }: { product: Producto, categoryMap: Record<string, string>, onDelete: () => void }) {
+  const router = useRouter();
   const [isExpanded, setIsExpanded] = useState(false);
+  const [showAgregarColor, setShowAgregarColor] = useState(false);
   
   const variants = sortVariants(product.variantes_stock || []);
   const totalStock = variants.reduce((sum, v) => sum + v.cantidad, 0);
@@ -276,7 +463,7 @@ function StockProductRow({ product, categoryMap }: { product: Producto, category
         <tr>
           <td colSpan={4} className="p-0 bg-black/20">
             <div className="px-4 sm:px-12 py-5 border-b border-white/5">
-              {variants.length === 0 ? (
+              {variants.length === 0 && !showAgregarColor ? (
                 <p className="text-sm text-gray-500 text-center py-2">Este producto no tiene variantes.</p>
               ) : (
                 <div className="overflow-x-auto">
@@ -294,10 +481,36 @@ function StockProductRow({ product, categoryMap }: { product: Producto, category
                       {variants.map(v => (
                         <StockVariantRow key={v.id} variante={v} />
                       ))}
+                      {showAgregarColor && (
+                        <AgregarColorRow
+                          productoId={product.id}
+                          onSuccess={() => { setShowAgregarColor(false); router.refresh(); }}
+                          onCancel={() => setShowAgregarColor(false)}
+                        />
+                      )}
                     </tbody>
                   </table>
                 </div>
               )}
+              
+              <div className="mt-4 flex items-center gap-3">
+                {!showAgregarColor && (
+                  <button
+                    onClick={() => setShowAgregarColor(true)}
+                    className="flex items-center gap-2 px-4 py-2 text-xs font-bold text-emerald-400 border border-emerald-500/30 bg-emerald-500/5 hover:bg-emerald-500/10 rounded-xl transition-colors"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+                    Agregar color
+                  </button>
+                )}
+                <button
+                  onClick={onDelete}
+                  className="flex items-center gap-2 px-4 py-2 text-xs font-bold text-red-400 border border-red-500/10 bg-red-500/5 hover:bg-red-500/10 rounded-xl transition-colors"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                  Eliminar producto
+                </button>
+              </div>
             </div>
           </td>
         </tr>
@@ -307,10 +520,38 @@ function StockProductRow({ product, categoryMap }: { product: Producto, category
 }
 
 export function StockManager({ productos, categorias, initialSearch = '' }: StockManagerProps) {
+  const router = useRouter()
   const [searchTerm, setSearchTerm] = useState(initialSearch)
   const [selectedCategoryId, setSelectedCategoryId] = useState('')
   const [selectedProduct, setSelectedProduct] = useState<Producto | null>(null)
   const [hideOutOfStock, setHideOutOfStock] = useState(false)
+
+  const [deletingProduct, setDeletingProduct] = useState<Producto | null>(null)
+  const [deleteStep, setDeleteStep] = useState<1 | 2>(1)
+  const [deleteStatus, setDeleteStatus] = useState<'idle' | 'deleting' | 'error'>('idle')
+  const [deleteError, setDeleteError] = useState('')
+
+  const handleDeleteInitiate = (product: Producto) => {
+    setDeletingProduct(product);
+    setDeleteStep(1);
+    setDeleteStatus('idle');
+    setDeleteError('');
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deletingProduct) return;
+    setDeleteStatus('deleting');
+    setDeleteError('');
+    const res = await eliminarProducto(deletingProduct.id);
+    if (res.status === 'success') {
+      setDeletingProduct(null);
+      setSelectedProduct(null);
+      router.refresh();
+    } else {
+      setDeleteStatus('error');
+      setDeleteError(res.message);
+    }
+  };
 
   const categoryMap = React.useMemo(() => {
     return categorias.reduce((acc, cat) => {
@@ -415,7 +656,7 @@ export function StockManager({ productos, categorias, initialSearch = '' }: Stoc
           emptyMessage="No se encontraron productos que coincidan con la búsqueda."
         >
           {filteredProducts.map(prod => (
-            <StockProductRow key={prod.id} product={prod} categoryMap={categoryMap} />
+            <StockProductRow key={prod.id} product={prod} categoryMap={categoryMap} onDelete={() => handleDeleteInitiate(prod)} />
           ))}
         </TableShell>
       </div>
@@ -469,8 +710,78 @@ export function StockManager({ productos, categorias, initialSearch = '' }: Stoc
         onClose={() => setSelectedProduct(null)}
         title={selectedProduct?.nombre || ''}
       >
-        {selectedProduct && <MobileProductSheetContent product={selectedProduct} />}
+        {selectedProduct && <MobileProductSheetContent product={selectedProduct} onDelete={() => handleDeleteInitiate(selectedProduct)} />}
       </BottomSheet>
+
+      {/* ─── Modal Eliminación (2-step) ───────────────────────── */}
+      {deletingProduct && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-[#1A1A20] w-full max-w-md rounded-2xl border border-red-500/20 shadow-2xl overflow-hidden flex flex-col animate-fadeIn">
+            <div className="p-6 border-b border-red-500/10 flex justify-between items-center bg-red-500/5">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-red-500/10 flex items-center justify-center text-red-500">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-white">Eliminar Producto</h3>
+                  <p className="text-sm text-red-400 mt-0.5">Acción destructiva</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-6 flex flex-col gap-4">
+              <div className="p-4 rounded-xl bg-[#0F0F12] border border-white/5">
+                <p className="text-sm text-gray-300">
+                  Estás a punto de eliminar <strong>{deletingProduct.nombre}</strong>.
+                </p>
+                <p className="text-sm text-gray-400 mt-2">
+                  Esto borrará también todas sus variantes, fotos y precios. Esta acción <span className="font-bold text-white">no se puede deshacer</span>.
+                </p>
+              </div>
+
+              {deleteStep === 2 && (
+                <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 animate-fadeIn">
+                  <p className="text-sm text-red-400 font-bold uppercase tracking-widest mb-1">Confirmación final</p>
+                  <p className="text-sm text-red-300">
+                    ¿Estás 100% seguro de eliminar este producto del catálogo?
+                  </p>
+                </div>
+              )}
+
+              {deleteError && (
+                <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-sm text-red-400">{deleteError}</div>
+              )}
+            </div>
+
+            <div className="p-6 border-t border-white/5 flex justify-between items-center gap-3 bg-[#1A1A20]">
+              <button 
+                onClick={() => setDeletingProduct(null)} 
+                disabled={deleteStatus === 'deleting'} 
+                className="px-5 py-2.5 text-sm font-bold text-gray-300 hover:text-white transition-colors disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              
+              {deleteStep === 1 ? (
+                <button
+                  onClick={() => setDeleteStep(2)}
+                  className="px-5 py-2.5 bg-red-500/10 hover:bg-red-500/20 text-red-500 text-sm font-bold rounded-xl border border-red-500/20 transition-all"
+                >
+                  Sí, quiero eliminarlo
+                </button>
+              ) : (
+                <button
+                  onClick={handleConfirmDelete}
+                  disabled={deleteStatus === 'deleting'}
+                  className="px-5 py-2.5 bg-red-500 hover:bg-red-600 text-white text-sm font-bold rounded-xl shadow-lg shadow-red-500/20 transition-all disabled:opacity-50 flex items-center gap-2"
+                >
+                  {deleteStatus === 'deleting' ? 'Eliminando...' : 'Eliminar definitivamente'}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </>
   )
 }

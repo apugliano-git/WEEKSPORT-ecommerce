@@ -3,8 +3,8 @@
 import React, { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Producto, Categoria, VarianteStock } from '@/types'
-import { actualizarProducto, setPromocion, clearPromocion, eliminarProducto } from '@/lib/productoService'
-import { crearVariante, actualizarVariante, eliminarVariante } from '@/lib/variantesService'
+import { actualizarProducto, setPromocion, clearPromocion } from '@/lib/productoService'
+import { actualizarVariante, eliminarVariante } from '@/lib/variantesService'
 import { subirImagenProducto } from '@/lib/inventarioService'
 import { Switch, BottomSheet, Badge, Button } from '@/components/admin/ui'
 
@@ -223,148 +223,6 @@ function VarianteRow({
   );
 }
 
-// ─────────────────────────────────────────────
-// Sub-componente: fila nueva variante (inline)
-// ─────────────────────────────────────────────
-function NuevaVarianteRow({
-  productoId,
-  tallesDisponibles,
-  coloresExistentes,
-  onSuccess,
-  onCancel,
-}: {
-  productoId: string;
-  tallesDisponibles: string[];
-  coloresExistentes: string[];
-  onSuccess: () => void;
-  onCancel: () => void;
-}) {
-  const [talle, setTalle] = useState(tallesDisponibles[0] || '');
-  const [color, setColor] = useState('');
-  const [cantidad, setCantidad] = useState(0);
-  const [precio, setPrecio] = useState(0);
-  const [visible, setVisible] = useState(true);
-  const [status, setStatus] = useState<'idle' | 'saving' | 'error'>('idle');
-  const [errorMsg, setErrorMsg] = useState('');
-
-  const handleSave = async () => {
-    const colorFinal = capitalizarColor(color);
-    if (!talle || !colorFinal || precio <= 0) {
-      setStatus('error');
-      setErrorMsg('Completá talle, color y precio antes de guardar.');
-      return;
-    }
-    setStatus('saving');
-    setErrorMsg('');
-    const res = await crearVariante(productoId, talle, colorFinal, cantidad, precio, visible);
-    if (res.status === 'success') {
-      onSuccess();
-    } else {
-      setStatus('error');
-      setErrorMsg(res.message);
-    }
-  };
-
-  return (
-    <tr className="bg-emerald-500/5 border border-emerald-500/20">
-      <td className="px-3 py-2 text-gray-500 font-mono text-xs italic">nueva</td>
-      <td className="px-3 py-2">
-        <select
-          value={talle}
-          onChange={e => setTalle(e.target.value)}
-          className="w-full bg-[#0F0F12] text-white border border-white/10 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500"
-        >
-          {tallesDisponibles.map(t => <option key={t} value={t}>{t}</option>)}
-        </select>
-      </td>
-      <td className="px-3 py-2">
-        <div className="flex flex-col gap-1.5">
-          {/* Chips de colores existentes */}
-          {coloresExistentes.length > 0 && (
-            <div className="flex flex-wrap gap-1">
-              {coloresExistentes.map(c => (
-                <button
-                  key={c}
-                  type="button"
-                  onClick={() => setColor(c)}
-                  className={`px-1.5 py-0.5 rounded text-[10px] font-semibold border transition-colors ${
-                    color === c
-                      ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-300'
-                      : 'bg-white/5 border-white/10 text-gray-400 hover:border-white/20 hover:text-gray-200'
-                  }`}
-                >
-                  {c}
-                </button>
-              ))}
-            </div>
-          )}
-          <input
-            type="text"
-            placeholder="Ej: Negro"
-            value={color}
-            onChange={e => setColor(e.target.value.slice(0, MAX_COLOR_LENGTH))}
-            onBlur={e => setColor(capitalizarColor(e.target.value))}
-            maxLength={MAX_COLOR_LENGTH}
-            className="w-full bg-[#0F0F12] text-white border border-white/10 rounded-lg px-2 py-1 text-xs placeholder-gray-600 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-          />
-        </div>
-      </td>
-      <td className="px-3 py-2 text-right">
-        <input
-          type="number"
-          min="0"
-          step="0.01"
-          placeholder="0"
-          value={precio || ''}
-          onChange={e => setPrecio(Number(e.target.value))}
-          className="w-24 bg-[#0F0F12] text-white border border-white/10 rounded-lg px-2 py-1 text-xs text-right placeholder-gray-600 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-        />
-      </td>
-      <td className="px-3 py-2 text-center">
-        <input
-          type="number"
-          min="0"
-          placeholder="0"
-          value={cantidad || ''}
-          onChange={e => setCantidad(Number(e.target.value))}
-          className="w-16 bg-[#0F0F12] text-white border border-white/10 rounded-lg px-2 py-1 text-xs text-center placeholder-gray-600 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-        />
-      </td>
-      <td className="px-3 py-2 text-center">
-        <button
-          type="button"
-          onClick={() => setVisible(!visible)}
-          className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${visible ? 'bg-emerald-500' : 'bg-zinc-600'}`}
-        >
-          <span className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${visible ? 'translate-x-5' : 'translate-x-1'}`} />
-        </button>
-      </td>
-      <td className="px-3 py-2 text-center">
-        <div className="flex items-center justify-center gap-1.5 flex-col">
-          <div className="flex gap-1.5">
-            <button
-              onClick={handleSave}
-              disabled={status === 'saving'}
-              className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold rounded-lg transition-colors disabled:opacity-50"
-            >
-              {status === 'saving' ? '...' : 'Crear'}
-            </button>
-            <button
-              onClick={onCancel}
-              disabled={status === 'saving'}
-              className="px-2.5 py-1 bg-zinc-700 hover:bg-zinc-600 text-white text-[11px] font-bold rounded-lg transition-colors disabled:opacity-50"
-            >
-              Cancelar
-            </button>
-          </div>
-          {status === 'error' && (
-            <span className="text-[10px] text-red-400 max-w-[120px] text-center leading-tight">{errorMsg}</span>
-          )}
-        </div>
-      </td>
-    </tr>
-  );
-}
 
 
 // ─────────────────────────────────────────────
@@ -377,7 +235,6 @@ function ProductRow({
   tallesPorTipo,
   onEdit,
   onPromo,
-  onDelete,
   onRefresh,
 }: {
   product: Producto;
@@ -385,11 +242,9 @@ function ProductRow({
   tallesPorTipo: TallePorTipo[];
   onEdit: (p: Producto) => void;
   onPromo: (p: Producto) => void;
-  onDelete: (p: Producto) => void;
   onRefresh: () => void;
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
-  const [showNuevaVariante, setShowNuevaVariante] = useState(false);
 
   const tallesDisponibles = tallesPorTipo
     .filter(t => t.tipo_talle === product.tipo_talle)
@@ -491,12 +346,6 @@ function ProductRow({
             >
               {product.precio_promocional ? '🏷 En oferta' : 'Promoción'}
             </button>
-            <button
-              onClick={() => onDelete(product)}
-              className="px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 text-xs font-bold rounded-lg transition-colors"
-            >
-              Eliminar
-            </button>
           </div>
         </td>
 
@@ -506,7 +355,7 @@ function ProductRow({
         <tr>
           <td colSpan={7} className="p-0 border-b border-white/5 bg-black/20">
             <div className="px-12 py-5">
-              {variants.length === 0 && !showNuevaVariante ? (
+              {variants.length === 0 ? (
                 <p className="text-sm text-gray-500 text-center py-2">Este producto no tiene variantes de stock.</p>
               ) : (
                 <table className="w-full text-left border-collapse bg-[#1A1A20] rounded-xl border border-white/5 overflow-hidden shadow-inner">
@@ -531,27 +380,8 @@ function ProductRow({
                         onRefresh={onRefresh}
                       />
                     ))}
-                    {showNuevaVariante && (
-                      <NuevaVarianteRow
-                        productoId={product.id}
-                        tallesDisponibles={tallesDisponibles}
-                        coloresExistentes={coloresExistentes}
-                        onSuccess={() => { setShowNuevaVariante(false); onRefresh(); }}
-                        onCancel={() => setShowNuevaVariante(false)}
-                      />
-                    )}
                   </tbody>
                 </table>
-              )}
-
-              {!showNuevaVariante && (
-                <button
-                  onClick={() => setShowNuevaVariante(true)}
-                  className="mt-4 flex items-center gap-2 px-4 py-2 text-xs font-bold text-emerald-400 border border-emerald-500/30 bg-emerald-500/5 hover:bg-emerald-500/10 rounded-xl transition-colors"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
-                  Agregar variante
-                </button>
               )}
             </div>
           </td>
@@ -674,102 +504,7 @@ function MobileVarianteItem({
   );
 }
 
-// ─────────────────────────────────────────────
-// Sub-componente MOBILE: form nueva variante (apilado)
-// ─────────────────────────────────────────────
-function MobileNuevaVariante({
-  productoId,
-  tallesDisponibles,
-  coloresExistentes,
-  onSuccess,
-  onCancel,
-}: {
-  productoId: string;
-  tallesDisponibles: string[];
-  coloresExistentes: string[];
-  onSuccess: () => void;
-  onCancel: () => void;
-}) {
-  const [talle, setTalle] = useState(tallesDisponibles[0] || '');
-  const [color, setColor] = useState('');
-  const [cantidad, setCantidad] = useState(0);
-  const [precio, setPrecio] = useState(0);
-  const [visible, setVisible] = useState(true);
-  const [status, setStatus] = useState<'idle' | 'saving' | 'error'>('idle');
-  const [errorMsg, setErrorMsg] = useState('');
 
-  const handleSave = async () => {
-    const colorFinal = capitalizarColor(color);
-    if (!talle || !colorFinal || precio <= 0) {
-      setStatus('error'); setErrorMsg('Completá talle, color y precio antes de guardar.'); return;
-    }
-    setStatus('saving'); setErrorMsg('');
-    const res = await crearVariante(productoId, talle, colorFinal, cantidad, precio, visible);
-    if (res.status === 'success') { onSuccess(); }
-    else { setStatus('error'); setErrorMsg(res.message); }
-  };
-
-  return (
-    <div className="p-4 rounded-xl border border-emerald-500/20 bg-emerald-500/5 flex flex-col gap-3">
-      <p className="text-xs font-bold text-emerald-400 uppercase tracking-widest">Nueva variante</p>
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1 block">Talle</label>
-          <select value={talle} onChange={e => setTalle(e.target.value)}
-            className="w-full bg-[#0F0F12] text-white border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500">
-            {tallesDisponibles.map(t => <option key={t} value={t}>{t}</option>)}
-          </select>
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-0.5 block">Color</label>
-          {/* Chips de colores existentes */}
-          {coloresExistentes.length > 0 && (
-            <div className="flex flex-wrap gap-1">
-              {coloresExistentes.map(c => (
-                <button
-                  key={c}
-                  type="button"
-                  onClick={() => setColor(c)}
-                  className={`px-2 py-0.5 rounded text-[10px] font-semibold border transition-colors ${
-                    color === c
-                      ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-300'
-                      : 'bg-white/5 border-white/10 text-gray-400 hover:border-white/20 hover:text-gray-200'
-                  }`}
-                >
-                  {c}
-                </button>
-              ))}
-            </div>
-          )}
-          <input type="text" placeholder="Ej: Negro" value={color}
-            onChange={e => setColor(e.target.value.slice(0, MAX_COLOR_LENGTH))}
-            onBlur={e => setColor(capitalizarColor(e.target.value))}
-            maxLength={MAX_COLOR_LENGTH}
-            className="w-full bg-[#0F0F12] text-white border border-white/10 rounded-lg px-3 py-2 text-sm placeholder-gray-600 focus:outline-none focus:ring-1 focus:ring-emerald-500" />
-        </div>
-        <div>
-          <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1 block">Precio</label>
-          <input type="number" min="0" step="0.01" placeholder="0" value={precio || ''} onChange={e => setPrecio(Number(e.target.value))}
-            className="w-full bg-[#0F0F12] text-white border border-white/10 rounded-lg px-3 py-2 text-sm placeholder-gray-600 focus:outline-none focus:ring-1 focus:ring-emerald-500" />
-        </div>
-        <div>
-          <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1 block">Stock</label>
-          <input type="number" min="0" placeholder="0" value={cantidad || ''} onChange={e => setCantidad(Number(e.target.value))}
-            className="w-full bg-[#0F0F12] text-white border border-white/10 rounded-lg px-3 py-2 text-sm placeholder-gray-600 focus:outline-none focus:ring-1 focus:ring-emerald-500" />
-        </div>
-      </div>
-      <div className="flex items-center gap-2">
-        <Switch checked={visible} onChange={setVisible} variant="success" />
-        <span className="text-xs text-gray-400">Visible en catálogo</span>
-      </div>
-      {status === 'error' && <p className="text-xs text-red-400">{errorMsg}</p>}
-      <div className="flex gap-2">
-        <Button variant="primary" size="sm" onClick={handleSave} isLoading={status === 'saving'} disabled={status === 'saving'}>Crear</Button>
-        <Button variant="ghost" size="sm" onClick={onCancel} disabled={status === 'saving'}>Cancelar</Button>
-      </div>
-    </div>
-  );
-}
 
 
 // ─────────────────────────────────────────────
@@ -779,30 +514,24 @@ function MobileProductSheet({
   product,
   tallesPorTipo,
   onEditProduct,
-  onDeleteProduct,
   onClose,
   onRefresh,
 }: {
   product: Producto;
   tallesPorTipo: TallePorTipo[];
   onEditProduct: () => void;
-  onDeleteProduct: () => void;
   onClose: () => void;
   onRefresh: () => void;
 }) {
-  const [showNuevaVariante, setShowNuevaVariante] = useState(false);
   const variants: VarianteStock[] = product.variantes_stock || [];
   const tallesDisponibles = tallesPorTipo
     .filter(t => t.tipo_talle === product.tipo_talle)
     .map(t => t.talle);
 
-  // Colores únicos ya usados en este producto
-  const coloresExistentes = [...new Set(variants.map(v => v.color).filter(Boolean))];
-
   return (
     <div className="flex flex-col gap-3">
       {/* Variantes */}
-      {variants.length === 0 && !showNuevaVariante ? (
+      {variants.length === 0 ? (
         <p className="text-sm text-gray-500 text-center py-4">Este producto no tiene variantes.</p>
       ) : (
         variants.map(v => (
@@ -810,42 +539,14 @@ function MobileProductSheet({
         ))
       )}
 
-      {/* Form nueva variante */}
-      {showNuevaVariante && (
-        <MobileNuevaVariante
-          productoId={product.id}
-          tallesDisponibles={tallesDisponibles}
-          coloresExistentes={coloresExistentes}
-          onSuccess={() => { setShowNuevaVariante(false); onRefresh(); }}
-          onCancel={() => setShowNuevaVariante(false)}
-        />
-      )}
-
-
       {/* Acciones del pie */}
       <div className="flex flex-col gap-2 pt-2 border-t border-white/5 mt-2">
-        {!showNuevaVariante && (
-          <button
-            onClick={() => setShowNuevaVariante(true)}
-            className="flex items-center justify-center gap-2 px-4 py-3 text-sm font-bold text-emerald-400 border border-emerald-500/30 bg-emerald-500/5 hover:bg-emerald-500/10 rounded-xl transition-colors"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
-            Agregar variante
-          </button>
-        )}
         <button
           onClick={() => { onClose(); onEditProduct(); }}
           className="flex items-center justify-center gap-2 px-4 py-3 text-sm font-bold text-gray-300 border border-white/10 bg-white/5 hover:bg-white/10 rounded-xl transition-colors"
         >
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
           Editar producto
-        </button>
-        <button
-          onClick={() => { onClose(); onDeleteProduct(); }}
-          className="flex items-center justify-center gap-2 px-4 py-3 text-sm font-bold text-red-400 border border-red-500/10 bg-red-500/5 hover:bg-red-500/10 rounded-xl transition-colors"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
-          Eliminar producto
         </button>
       </div>
     </div>
@@ -879,10 +580,6 @@ export function ProductTable({ productos, categorias, tallesPorTipo }: ProductTa
   const [promoInput, setPromoInput] = useState('')
   const [promoStatus, setPromoStatus] = useState<'idle' | 'saving' | 'error'>('idle')
   const [promoError, setPromoError] = useState('')
-  const [deletingProduct, setDeletingProduct] = useState<Producto | null>(null)
-  const [deleteStep, setDeleteStep] = useState<1 | 2>(1)
-  const [deleteStatus, setDeleteStatus] = useState<'idle' | 'deleting' | 'error'>('idle')
-  const [deleteError, setDeleteError] = useState('')
 
   const categoryMap = React.useMemo(() => {
     return categorias.reduce((acc, cat) => {
@@ -944,27 +641,6 @@ export function ProductTable({ productos, categorias, tallesPorTipo }: ProductTa
     setPromoInput(product.precio_promocional ? String(product.precio_promocional) : '');
     setPromoStatus('idle');
     setPromoError('');
-  };
-
-  const handleDeleteInitiate = (product: Producto) => {
-    setDeletingProduct(product);
-    setDeleteStep(1);
-    setDeleteStatus('idle');
-    setDeleteError('');
-  };
-
-  const handleConfirmDelete = async () => {
-    if (!deletingProduct) return;
-    setDeleteStatus('deleting');
-    setDeleteError('');
-    const res = await eliminarProducto(deletingProduct.id);
-    if (res.status === 'success') {
-      setDeletingProduct(null);
-      router.refresh();
-    } else {
-      setDeleteStatus('error');
-      setDeleteError(res.message);
-    }
   };
 
   const handleSavePromo = async () => {
@@ -1048,7 +724,7 @@ export function ProductTable({ productos, categorias, tallesPorTipo }: ProductTa
                 <tr><td colSpan={7} className="px-6 py-12 text-center text-gray-500">No se encontraron productos que coincidan con la búsqueda.</td></tr>
               ) : (
                 filteredProducts.map(prod => (
-                  <ProductRow key={prod.id} product={prod} categoryMap={categoryMap} tallesPorTipo={tallesPorTipo} onEdit={handleEdit} onPromo={handlePromo} onDelete={handleDeleteInitiate} onRefresh={() => router.refresh()} />
+                  <ProductRow key={prod.id} product={prod} categoryMap={categoryMap} tallesPorTipo={tallesPorTipo} onEdit={handleEdit} onPromo={handlePromo} onRefresh={() => router.refresh()} />
                 ))
               )}
             </tbody>
@@ -1126,81 +802,13 @@ export function ProductTable({ productos, categorias, tallesPorTipo }: ProductTa
             tallesPorTipo={tallesPorTipo}
             onClose={() => setSelectedProductSheet(null)}
             onEditProduct={() => handleEdit(selectedProductSheet)}
-            onDeleteProduct={() => handleDeleteInitiate(selectedProductSheet)}
             onRefresh={() => router.refresh()}
           />
         )}
       </BottomSheet>
 
       {/* ─── Modal Eliminación (2-step) ───────────────────────── */}
-      {deletingProduct && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="bg-[#1A1A20] w-full max-w-md rounded-2xl border border-red-500/20 shadow-2xl overflow-hidden flex flex-col animate-fadeIn">
-            <div className="p-6 border-b border-red-500/10 flex justify-between items-center bg-red-500/5">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-red-500/10 flex items-center justify-center text-red-500">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
-                </div>
-                <div>
-                  <h3 className="text-xl font-bold text-white">Eliminar Producto</h3>
-                  <p className="text-sm text-red-400 mt-0.5">Acción destructiva</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="p-6 flex flex-col gap-4">
-              <div className="p-4 rounded-xl bg-[#0F0F12] border border-white/5">
-                <p className="text-sm text-gray-300">
-                  Estás a punto de eliminar <strong>{deletingProduct.nombre}</strong>.
-                </p>
-                <p className="text-sm text-gray-400 mt-2">
-                  Esto borrará también todas sus variantes, fotos y precios. Esta acción <span className="font-bold text-white">no se puede deshacer</span>.
-                </p>
-              </div>
-
-              {deleteStep === 2 && (
-                <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 animate-fadeIn">
-                  <p className="text-sm text-red-400 font-bold uppercase tracking-widest mb-1">Confirmación final</p>
-                  <p className="text-sm text-red-300">
-                    ¿Estás 100% seguro de eliminar este producto del catálogo?
-                  </p>
-                </div>
-              )}
-
-              {deleteError && (
-                <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-sm text-red-400">{deleteError}</div>
-              )}
-            </div>
-
-            <div className="p-6 border-t border-white/5 flex justify-between items-center gap-3 bg-[#1A1A20]">
-              <button 
-                onClick={() => setDeletingProduct(null)} 
-                disabled={deleteStatus === 'deleting'} 
-                className="px-5 py-2.5 text-sm font-bold text-gray-300 hover:text-white transition-colors disabled:opacity-50"
-              >
-                Cancelar
-              </button>
-              
-              {deleteStep === 1 ? (
-                <button
-                  onClick={() => setDeleteStep(2)}
-                  className="px-5 py-2.5 bg-red-500/10 hover:bg-red-500/20 text-red-500 text-sm font-bold rounded-xl border border-red-500/20 transition-all"
-                >
-                  Sí, quiero eliminarlo
-                </button>
-              ) : (
-                <button
-                  onClick={handleConfirmDelete}
-                  disabled={deleteStatus === 'deleting'}
-                  className="px-5 py-2.5 bg-red-500 hover:bg-red-600 text-white text-sm font-bold rounded-xl shadow-lg shadow-red-500/20 transition-all disabled:opacity-50 flex items-center gap-2"
-                >
-                  {deleteStatus === 'deleting' ? 'Eliminando...' : 'Eliminar definitivamente'}
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Removido hacia StockManager.tsx */}
 
       {/* ─── Modal Promoción ────────────────────────────────────── */}
       {promoProduct && (
