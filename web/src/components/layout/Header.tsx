@@ -8,6 +8,18 @@ import { SearchBar } from './SearchBar'
 
 export function Header() {
   const { totalItems, openDrawer } = useCart()
+  const [isAnimating, setIsAnimating] = React.useState(false)
+  const prevTotalRef = React.useRef(totalItems)
+
+  React.useEffect(() => {
+    if (totalItems > prevTotalRef.current) {
+      setIsAnimating(true)
+      const timer = setTimeout(() => setIsAnimating(false), 300)
+      prevTotalRef.current = totalItems
+      return () => clearTimeout(timer)
+    }
+    prevTotalRef.current = totalItems
+  }, [totalItems])
 
   return (
     <header className="sticky top-0 z-40 w-full bg-[#0F0F12] border-b border-white/5">
@@ -57,7 +69,7 @@ export function Header() {
             </svg>
             
             {totalItems > 0 && (
-              <span className="absolute top-0 right-0 inline-flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-[#F400A1] rounded-full transform translate-x-1 -translate-y-1">
+              <span className={`absolute top-0 right-0 inline-flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-[#F400A1] rounded-full transform translate-x-1 -translate-y-1 transition-transform duration-200 ${isAnimating ? 'scale-125' : 'scale-100'}`}>
                 {totalItems}
               </span>
             )}

@@ -3,6 +3,7 @@
 import React, { useState } from 'react'
 import { Producto, VarianteStock } from '@/types'
 import { useCart } from '@/context/CartContext'
+import { Toast } from '@/components/ui/Toast'
 
 interface ProductInfoProps {
   producto: Producto
@@ -21,6 +22,7 @@ export function ProductInfo({ producto }: ProductInfoProps) {
   const [selectedColor, setSelectedColor] = useState<string>(varianteInicial?.color || '')
   const [selectedTalle, setSelectedTalle] = useState<string>('')
   const [quantity, setQuantity] = useState<number>(1)
+  const [showToast, setShowToast] = useState(false)
 
   const selectedVariante = variantes.find(
     v => v.talle === selectedTalle && v.color === selectedColor
@@ -49,6 +51,7 @@ export function ProductInfo({ producto }: ProductInfoProps) {
       addItem(producto, selectedVariante, quantity)
       // Reset quantity or show toast
       setQuantity(1)
+      setShowToast(true)
     }
   }
 
@@ -230,6 +233,12 @@ export function ProductInfo({ producto }: ProductInfoProps) {
           </div>
         </div>
       )}
+
+      <Toast 
+        isVisible={showToast} 
+        onClose={() => setShowToast(false)} 
+        message={`Agregado: ${producto.nombre}`}
+      />
     </div>
   )
 }
