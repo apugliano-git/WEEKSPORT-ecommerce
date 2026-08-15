@@ -3,7 +3,7 @@
 import React, { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Producto, Categoria } from '@/types'
-import { actualizarStockVariante, agregarColorAProducto } from '@/lib/inventarioService'
+import { actualizarStockVariante, agregarColorAProducto, actualizarPrecioColor } from '@/lib/inventarioService'
 import { eliminarProducto } from '@/lib/productoService'
 import { TableShell, Select, Input, Badge, Button, BottomSheet, Switch } from '@/components/admin/ui'
 
@@ -36,7 +36,21 @@ function sortVariants(variants: any[]) {
   });
 }
 
-function StockVariantRow({ variante }: { variante: any }) {
+function agruparPorColor(variantes: any[]) {
+  const grupos = new Map<string, any[]>();
+  for (const v of variantes) {
+    const key = v.color || 'Sin color';
+    if (!grupos.has(key)) grupos.set(key, []);
+    grupos.get(key)!.push(v);
+  }
+  return Array.from(grupos.entries()).map(([color, vars]) => ({
+    color,
+    precio: vars[0]?.precio ?? 0,
+    variantes: sortVariants(vars),
+  }));
+}
+
+function StockVariantRow({ variante, hideColor = false }: { variante: any, hideColor?: boolean }) {
   const [currentStock, setCurrentStock] = useState(variante.cantidad);
   const [inputValue, setInputValue] = useState<number | ''>(variante.cantidad);
   const [status, setStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
@@ -71,7 +85,7 @@ function StockVariantRow({ variante }: { variante: any }) {
   return (
     <tr className={`hover:bg-white/[0.02] transition-colors ${isCritical ? 'bg-red-500/[0.02]' : ''}`}>
       <td className="px-4 py-3 text-gray-300 font-semibold">{variante.talle}</td>
-      <td className="px-4 py-3 text-gray-300">{variante.color}</td>
+      {!hideColor && <td className="px-4 py-3 text-gray-300">{variante.color}</td>}
       <td className="px-4 py-3 text-center">
         <Badge variant={isOutOfStock ? 'danger' : isCritical ? 'warning' : 'success'} pulse={isCritical}>
           {currentStock} uds
@@ -203,16 +217,17 @@ function MobileVariantAdjust({ variante, onBack }: { variante: any, onBack: () =
 
 function AgregarColorRow({
   productoId,
+  precioSugerido,
   onSuccess,
   onCancel,
 }: {
   productoId: string;
+  precioSugerido: number;
   onSuccess: () => void;
   onCancel: () => void;
 }) {
   const [color, setColor] = useState('');
-  const [precio, setPrecio] = useState(0);
-  const [cantidad, setCantidad] = useState(0);
+  const [precio, setPrecio] = useState(precioSugerido);
   const [status, setStatus] = useState<'idle' | 'saving' | 'error'>('idle');
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -225,7 +240,7 @@ function AgregarColorRow({
     }
     setStatus('saving');
     setErrorMsg('');
-    const res = await agregarColorAProducto(productoId, colorFinal, precio, cantidad);
+    const res = await agregarColorAProducto(productoId, colorFinal, precio, 0);
     if (res.status === 'success') {
       onSuccess();
     } else {
@@ -236,10 +251,10 @@ function AgregarColorRow({
 
   return (
     <tr className="bg-emerald-500/5 border border-emerald-500/20">
-      <td className="px-3 py-2 text-gray-500 font-mono text-xs italic text-center" colSpan={2}>
+      <td className="px-3 py-2 text-gray-500 font-mono text-xs italic text-center" colSpan={1}>
         <div className="flex flex-col gap-1">
-          <span className="text-xs font-bold text-emerald-400 uppercase">Nuevo Color</span>
-          <span className="text-[10px] text-gray-500">Aplica a todos los talles</span>
+          <span className="text-[11px] font-bold text-emerald-400 uppercase leading-tight">Nuevo<br/>Color</span>
+          <span className="text-[9px] text-gray-500 leading-tight">Todos los<br/>talles</span>
         </div>
       </td>
       <td className="px-3 py-2">
@@ -253,15 +268,8 @@ function AgregarColorRow({
           className="w-full bg-[#0F0F12] text-white border border-white/10 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500 text-center"
         />
       </td>
-      <td className="px-3 py-2 text-center">
-        <input
-          type="number"
-          min="0"
-          placeholder="Cant. inicial"
-          value={cantidad || ''}
-          onChange={e => setCantidad(Number(e.target.value))}
-          className="w-20 mx-auto bg-[#0F0F12] text-white border border-white/10 rounded-lg px-2 py-1 text-xs text-center focus:outline-none focus:ring-1 focus:ring-emerald-500"
-        />
+      <td className="px-3 py-2 text-center text-xs text-gray-500 italic">
+        0 uds
       </td>
       <td className="px-3 py-2 text-center">
         <input
@@ -293,16 +301,17 @@ function AgregarColorRow({
 
 function MobileAgregarColor({
   productoId,
+  precioSugerido,
   onSuccess,
   onCancel,
 }: {
   productoId: string;
+  precioSugerido: number;
   onSuccess: () => void;
   onCancel: () => void;
 }) {
   const [color, setColor] = useState('');
-  const [precio, setPrecio] = useState(0);
-  const [cantidad, setCantidad] = useState(0);
+  const [precio, setPrecio] = useState(precioSugerido);
   const [status, setStatus] = useState<'idle' | 'saving' | 'error'>('idle');
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -312,7 +321,7 @@ function MobileAgregarColor({
       setStatus('error'); setErrorMsg('Completá color y precio.'); return;
     }
     setStatus('saving'); setErrorMsg('');
-    const res = await agregarColorAProducto(productoId, colorFinal, precio, cantidad);
+    const res = await agregarColorAProducto(productoId, colorFinal, precio, 0);
     if (res.status === 'success') { onSuccess(); }
     else { setStatus('error'); setErrorMsg(res.message); }
   };
@@ -321,20 +330,16 @@ function MobileAgregarColor({
     <div className="p-4 rounded-xl border border-emerald-500/20 bg-emerald-500/5 flex flex-col gap-3">
       <div>
         <p className="text-xs font-bold text-emerald-400 uppercase tracking-widest">Nuevo Color</p>
-        <p className="text-[10px] text-gray-400">Se creará en todos los talles.</p>
+        <p className="text-[10px] text-gray-400">Se creará con 0 stock inicial.</p>
       </div>
-      <div className="grid grid-cols-2 gap-3">
-        <div className="col-span-2">
+      <div className="flex flex-col gap-3">
+        <div>
           <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1 block">Color</label>
           <input type="text" placeholder="Ej: Negro" value={color} onChange={e => setColor(e.target.value.slice(0, MAX_COLOR_LENGTH))} onBlur={e => setColor(capitalizarColor(e.target.value))} maxLength={MAX_COLOR_LENGTH} className="w-full bg-[#0F0F12] text-white border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500" />
         </div>
         <div>
-          <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1 block">Precio</label>
+          <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1 block">Precio de lista</label>
           <input type="number" min="0" step="0.01" placeholder="0" value={precio || ''} onChange={e => setPrecio(Number(e.target.value))} className="w-full bg-[#0F0F12] text-white border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500" />
-        </div>
-        <div>
-          <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1 block">Stock inicial / talle</label>
-          <input type="number" min="0" placeholder="0" value={cantidad || ''} onChange={e => setCantidad(Number(e.target.value))} className="w-full bg-[#0F0F12] text-white border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500" />
         </div>
       </div>
       {status === 'error' && <p className="text-xs text-red-400">{errorMsg}</p>}
@@ -342,6 +347,84 @@ function MobileAgregarColor({
         <Button variant="primary" size="sm" onClick={handleSave} isLoading={status === 'saving'} disabled={status === 'saving'}>Crear</Button>
         <Button variant="ghost" size="sm" onClick={onCancel} disabled={status === 'saving'}>Cancelar</Button>
       </div>
+    </div>
+  );
+}
+
+function MobileColorGroupBlock({ productoId, grupo, onRefresh, onSelectVariant }: { productoId: string, grupo: any, onRefresh: () => void, onSelectVariant: (v: any) => void }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [isEditingPrice, setIsEditingPrice] = useState(false);
+  const [newPrice, setNewPrice] = useState(grupo.precio);
+  const [status, setStatus] = useState<'idle' | 'saving' | 'error'>('idle');
+
+  const handleSavePrice = async () => {
+    setStatus('saving');
+    const res = await actualizarPrecioColor(productoId, grupo.color, newPrice);
+    if (res.status === 'success') {
+      setStatus('idle');
+      setIsEditingPrice(false);
+      onRefresh();
+    } else {
+      setStatus('error');
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-2 bg-[#1A1A20] rounded-xl border border-white/5 overflow-hidden p-3 shadow-sm">
+      <div className={`flex flex-col pb-3 gap-2 transition-colors border-b ${isOpen ? 'border-white/5 mb-1' : 'border-transparent mb-0 pb-0'}`}>
+        <div className="flex items-center justify-between">
+          <button 
+            onClick={() => setIsOpen(!isOpen)} 
+            className="flex items-center gap-2 focus:outline-none flex-1 text-left"
+          >
+            <div className={`text-gray-500 transition-transform ${isOpen ? 'rotate-90 text-white' : ''}`}>
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+            </div>
+            <span className="font-bold text-white uppercase tracking-wider">{grupo.color}</span>
+          </button>
+          {!isEditingPrice && (
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="text-emerald-400 font-mono text-sm">{grupo.precio.toLocaleString('es-AR', { style: 'currency', currency: 'ARS' })}</span>
+              <button onClick={() => { setNewPrice(grupo.precio); setIsEditingPrice(true); }} className="p-1.5 bg-white/5 rounded-lg text-gray-400 hover:text-white transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
+              </button>
+            </div>
+          )}
+        </div>
+        {isEditingPrice && (
+          <div className="flex items-center gap-2 w-full mt-1">
+            <input type="number" step="0.01" value={newPrice} onChange={e => setNewPrice(Number(e.target.value))} className="flex-1 min-w-0 bg-[#0F0F12] border border-white/10 rounded-lg px-3 py-2 text-sm text-white" />
+            <button onClick={handleSavePrice} disabled={status === 'saving'} className="px-3 py-2 bg-emerald-500/20 text-emerald-400 rounded-lg text-sm font-bold transition-colors">OK</button>
+            <button onClick={() => setIsEditingPrice(false)} disabled={status === 'saving'} className="px-3 py-2 bg-zinc-800 text-gray-300 rounded-lg text-sm font-bold transition-colors">X</button>
+          </div>
+        )}
+      </div>
+      
+      {isOpen && (
+        <div className="flex flex-col gap-2 mt-1">
+          {grupo.variantes.map((v: any) => {
+            const isCritical = v.cantidad < 3;
+            const isOutOfStock = v.cantidad === 0;
+            return (
+              <button
+                key={v.id}
+                onClick={() => onSelectVariant(v)}
+                className={`flex items-center justify-between p-3 rounded-xl border border-white/5 bg-[#0F0F12] hover:border-white/10 active:bg-white/5 transition-colors text-left ${isCritical ? 'border-red-500/20 bg-red-500/5' : ''}`}
+              >
+                <span className="text-white font-bold text-base">{v.talle}</span>
+                <div className="flex items-center gap-3">
+                  <Badge variant={isOutOfStock ? 'danger' : isCritical ? 'warning' : 'success'} pulse={isCritical}>
+                    {v.cantidad} uds
+                  </Badge>
+                  <div className="text-gray-600">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+                  </div>
+                </div>
+              </button>
+            )
+          })}
+        </div>
+      )}
     </div>
   );
 }
@@ -360,36 +443,21 @@ function MobileProductSheetContent({ product, onDelete }: { product: Producto, o
       {product?.variantes_stock?.length === 0 && !showAgregarColor ? (
         <p className="text-sm text-gray-500 text-center py-4">Este producto no tiene variantes.</p>
       ) : (
-        sortVariants(product?.variantes_stock || []).map(v => {
-          const isCritical = v.cantidad < 3;
-          const isOutOfStock = v.cantidad === 0;
-          return (
-            <button
-              key={v.id}
-              onClick={() => setSelectedVariant(v)}
-              className={`flex items-center justify-between p-4 rounded-xl border border-white/5 bg-[#0F0F12] hover:border-white/10 active:bg-white/5 transition-colors text-left ${isCritical ? 'border-red-500/20 bg-red-500/5' : ''}`}
-            >
-              <div className="flex flex-col flex-1 min-w-0 mr-4">
-                <span className="text-white font-bold text-base truncate pr-2">
-                  {v.talle} <span className="text-gray-400 font-normal">· {v.color}</span>
-                </span>
-              </div>
-              <div className="shrink-0 flex items-center gap-3">
-                <Badge variant={isOutOfStock ? 'danger' : isCritical ? 'warning' : 'success'} pulse={isCritical}>
-                  {v.cantidad} uds
-                </Badge>
-                <div className="text-gray-600">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg>
-                </div>
-              </div>
-            </button>
-          )
-        })
+        agruparPorColor(product?.variantes_stock || []).map(grupo => (
+          <MobileColorGroupBlock 
+            key={grupo.color} 
+            productoId={product.id} 
+            grupo={grupo} 
+            onRefresh={() => router.refresh()} 
+            onSelectVariant={setSelectedVariant} 
+          />
+        ))
       )}
 
       {showAgregarColor && (
         <MobileAgregarColor
           productoId={product.id}
+          precioSugerido={product.variantes_stock?.[0]?.precio ?? 0}
           onSuccess={() => { setShowAgregarColor(false); router.refresh(); }}
           onCancel={() => setShowAgregarColor(false)}
         />
@@ -415,6 +483,75 @@ function MobileProductSheetContent({ product, onDelete }: { product: Producto, o
       </div>
     </div>
   )
+}
+
+function ColorGroupBlock({ productoId, grupo, onRefresh }: { productoId: string, grupo: any, onRefresh: () => void }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [isEditingPrice, setIsEditingPrice] = useState(false);
+  const [newPrice, setNewPrice] = useState(grupo.precio);
+  const [status, setStatus] = useState<'idle' | 'saving' | 'error'>('idle');
+
+  const handleSavePrice = async () => {
+    setStatus('saving');
+    const res = await actualizarPrecioColor(productoId, grupo.color, newPrice);
+    if (res.status === 'success') {
+      setStatus('idle');
+      setIsEditingPrice(false);
+      onRefresh();
+    } else {
+      setStatus('error');
+    }
+  };
+
+  return (
+    <div className="mb-4 bg-[#1A1A20] rounded-xl border border-white/5 overflow-hidden shadow-sm">
+      <div className={`bg-[#23232A]/50 px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b transition-colors ${isOpen ? 'border-white/5' : 'border-transparent'}`}>
+        <div className="flex items-center gap-3">
+          <button 
+            onClick={() => setIsOpen(!isOpen)} 
+            className="flex items-center gap-2 focus:outline-none group"
+          >
+            <div className={`text-gray-500 transition-transform group-hover:text-white ${isOpen ? 'rotate-90 text-white' : ''}`}>
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+            </div>
+            <span className="font-bold text-white uppercase tracking-wider">{grupo.color}</span>
+          </button>
+          <div className="hidden sm:block h-4 w-px bg-white/10" />
+          {isEditingPrice ? (
+            <div className="flex items-center gap-2">
+              <input type="number" step="0.01" value={newPrice} onChange={e => setNewPrice(Number(e.target.value))} className="w-24 bg-[#0F0F12] border border-white/10 rounded px-2 py-1 text-xs text-white" />
+              <button onClick={handleSavePrice} disabled={status === 'saving'} className="px-2 py-1 bg-emerald-500/20 text-emerald-400 rounded text-xs font-bold hover:bg-emerald-500/30 transition-colors">Guardar</button>
+              <button onClick={() => setIsEditingPrice(false)} disabled={status === 'saving'} className="px-2 py-1 text-gray-400 text-xs hover:text-white transition-colors">Cancelar</button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <span className="text-emerald-400 font-mono text-sm">{grupo.precio.toLocaleString('es-AR', { style: 'currency', currency: 'ARS' })}</span>
+              <button onClick={() => { setNewPrice(grupo.precio); setIsEditingPrice(true); }} className="text-[10px] text-gray-500 hover:text-white uppercase tracking-wider font-bold underline decoration-white/20 underline-offset-2">Editar precio</button>
+            </div>
+          )}
+        </div>
+      </div>
+      {isOpen && (
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-[#0F0F12] text-[10px] text-gray-500 font-bold uppercase tracking-widest border-b border-white/5">
+                <th className="px-4 py-2">Talle</th>
+                <th className="px-4 py-2 text-center">Stock Actual</th>
+                <th className="px-4 py-2 text-center w-32">Nuevo Stock</th>
+                <th className="px-4 py-2 text-center w-28">Acción</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-white/5 text-sm">
+              {grupo.variantes.map((v: any) => (
+                <StockVariantRow key={v.id} variante={v} hideColor={true} />
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
 }
 
 function StockProductRow({ product, categoryMap, onDelete }: { product: Producto, categoryMap: Record<string, string>, onDelete: () => void }) {
@@ -466,30 +603,26 @@ function StockProductRow({ product, categoryMap, onDelete }: { product: Producto
               {variants.length === 0 && !showAgregarColor ? (
                 <p className="text-sm text-gray-500 text-center py-2">Este producto no tiene variantes.</p>
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse bg-[#1A1A20] rounded-xl border border-white/5 shadow-inner">
-                    <thead>
-                      <tr className="bg-[#0F0F12] text-[10px] text-gray-500 font-bold uppercase tracking-widest border-b border-white/5">
-                        <th className="px-4 py-3">Talle</th>
-                        <th className="px-4 py-3">Color</th>
-                        <th className="px-4 py-3 text-center">Stock Actual</th>
-                        <th className="px-4 py-3 text-center w-32">Nuevo Stock</th>
-                        <th className="px-4 py-3 text-center w-28">Acción</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-white/5 text-sm">
-                      {variants.map(v => (
-                        <StockVariantRow key={v.id} variante={v} />
-                      ))}
-                      {showAgregarColor && (
-                        <AgregarColorRow
-                          productoId={product.id}
-                          onSuccess={() => { setShowAgregarColor(false); router.refresh(); }}
-                          onCancel={() => setShowAgregarColor(false)}
-                        />
-                      )}
-                    </tbody>
-                  </table>
+                <div className="flex flex-col gap-2">
+                  {agruparPorColor(variants).map(grupo => (
+                    <ColorGroupBlock key={grupo.color} productoId={product.id} grupo={grupo} onRefresh={() => router.refresh()} />
+                  ))}
+                  {showAgregarColor && (
+                    <div className="bg-[#1A1A20] rounded-xl border border-emerald-500/20 overflow-hidden shadow-sm">
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse">
+                          <tbody className="divide-y divide-white/5 text-sm">
+                            <AgregarColorRow
+                              productoId={product.id}
+                              precioSugerido={variants[0]?.precio ?? 0}
+                              onSuccess={() => { setShowAgregarColor(false); router.refresh(); }}
+                              onCancel={() => setShowAgregarColor(false)}
+                            />
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
               

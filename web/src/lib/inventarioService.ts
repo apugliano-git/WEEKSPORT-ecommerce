@@ -168,3 +168,29 @@ export async function agregarColorAProducto(
     return { status: 'error', message: 'Fallo de red o excepción interna al agregar color.' };
   }
 }
+
+export async function actualizarPrecioColor(
+  productoId: string,
+  color: string,
+  precioNuevo: number
+): Promise<{ status: 'success' | 'error'; message: string }> {
+  try {
+    const { data, error } = await supabase.rpc('actualizar_precio_color', {
+      p_producto_id: productoId,
+      p_color: color,
+      p_precio_nuevo: precioNuevo,
+    });
+
+    if (error) {
+      return { status: 'error', message: error.message };
+    }
+
+    if (data?.status === 'error') {
+      return { status: 'error', message: data.message || 'Error al actualizar el precio.' };
+    }
+
+    return { status: 'success', message: 'Precio actualizado con éxito.' };
+  } catch (err: any) {
+    return { status: 'error', message: 'Fallo de red o excepción interna al actualizar precio.' };
+  }
+}

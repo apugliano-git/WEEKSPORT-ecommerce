@@ -50,7 +50,6 @@ function VarianteRow({
 
   const [talle, setTalle] = useState(variante.talle);
   const [color, setColor] = useState(variante.color);
-  const [precio, setPrecio] = useState(variante.precio);
   const [visible, setVisible] = useState(variante.visible_en_catalogo);
 
   const isCritical = variante.cantidad === 1;
@@ -59,7 +58,6 @@ function VarianteRow({
   const handleCancel = () => {
     setTalle(variante.talle);
     setColor(variante.color);
-    setPrecio(variante.precio);
     setVisible(variante.visible_en_catalogo);
     setStatus('idle');
     setErrorMsg('');
@@ -69,7 +67,7 @@ function VarianteRow({
   const handleSave = async () => {
     setStatus('saving');
     setErrorMsg('');
-    const res = await actualizarVariante(variante.id, { talle, color, precio, visible_en_catalogo: visible });
+    const res = await actualizarVariante(variante.id, { talle, color, visible_en_catalogo: visible });
     if (res.status === 'success') {
       setIsEditing(false);
       setStatus('idle');
@@ -118,14 +116,14 @@ function VarianteRow({
             />
           </td>
           <td className="px-3 py-2 text-right">
-            <input
-              type="number"
-              min="0"
-              step="0.01"
-              value={precio}
-              onChange={e => setPrecio(Number(e.target.value))}
-              className="w-24 bg-[#0F0F12] text-white border border-white/10 rounded-lg px-2 py-1 text-xs text-right focus:outline-none focus:ring-1 focus:ring-[#F400A1]"
-            />
+            <div className="flex flex-col items-end">
+              <span className="text-gray-300 text-xs">
+                {variante.precio.toLocaleString('es-AR', { style: 'currency', currency: 'ARS' })}
+              </span>
+              <span className="text-[9px] text-gray-500 leading-tight mt-0.5" title="El precio se edita de a grupos de color desde la pestaña Stock">
+                Editá en Stock
+              </span>
+            </div>
           </td>
           <td className="px-3 py-2 text-center">
             <div className="flex flex-col items-center gap-1.5">
@@ -225,7 +223,18 @@ function VarianteRow({
 
 
 
-// ─────────────────────────────────────────────
+function agruparPorColor(variantes: any[]) {
+  const grupos = new Map<string, any[]>();
+  for (const v of variantes) {
+    const key = v.color || 'Sin color';
+    if (!grupos.has(key)) grupos.set(key, []);
+    grupos.get(key)!.push(v);
+  }
+  return Array.from(grupos.entries()).map(([color, vars]) => ({
+    color,
+    variantes: vars,
+  }));
+}
 
 // Sub-componente: fila de producto (expandible)
 // ─────────────────────────────────────────────
@@ -245,6 +254,16 @@ function ProductRow({
   onRefresh: () => void;
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [coloresAbiertos, setColoresAbiertos] = useState<Set<string>>(new Set());
+
+  const toggleColor = (color: string) => {
+    setColoresAbiertos(prev => {
+      const next = new Set(prev);
+      if (next.has(color)) next.delete(color);
+      else next.add(color);
+      return next;
+    });
+  };
 
   const tallesDisponibles = tallesPorTipo
     .filter(t => t.tipo_talle === product.tipo_talle)
@@ -259,11 +278,8 @@ function ProductRow({
     return a.talle.localeCompare(b.talle);
   });
 
-  // Colores únicos ya usados en este producto (para sugerencias rápidas)
   const coloresExistentes = [...new Set(variants.map(v => v.color).filter(Boolean))];
-
   const totalStock = variants.reduce((sum, v) => sum + v.cantidad, 0);
-
 
   let priceDisplay = 'N/A';
   if (variants.length > 0) {
@@ -358,30 +374,57 @@ function ProductRow({
               {variants.length === 0 ? (
                 <p className="text-sm text-gray-500 text-center py-2">Este producto no tiene variantes de stock.</p>
               ) : (
-                <table className="w-full text-left border-collapse bg-[#1A1A20] rounded-xl border border-white/5 overflow-hidden shadow-inner">
-                  <thead>
-                    <tr className="bg-[#0F0F12] text-[10px] text-gray-500 font-bold uppercase tracking-widest border-b border-white/5">
-                      <th className="px-4 py-3">ID</th>
-                      <th className="px-4 py-3">Talle</th>
-                      <th className="px-4 py-3">Color</th>
-                      <th className="px-4 py-3 text-right">Precio</th>
-                      <th className="px-4 py-3 text-center">Stock</th>
-                      <th className="px-4 py-3 text-center">Visible</th>
-                      <th className="px-4 py-3 text-center w-36">Acciones</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-white/5 text-sm">
-                    {variants.map(v => (
-                      <VarianteRow
-                        key={v.id}
-                        variante={v}
-                        tallesDisponibles={tallesDisponibles}
-                        productoNombre={product.nombre}
-                        onRefresh={onRefresh}
-                      />
-                    ))}
-                  </tbody>
-                </table>
+                <div className="flex flex-col gap-3">
+                  {agruparPorColor(variants).map(grupo => {
+                    const isOpen = coloresAbiertos.has(grupo.color);
+                    return (
+                      <div key={grupo.color} className="bg-[#1A1A20] rounded-xl border border-white/5 overflow-hidden shadow-inner">
+                        <button
+                          onClick={() => toggleColor(grupo.color)}
+                          className="w-full flex items-center justify-between px-4 py-3 bg-[#0F0F12] hover:bg-white/[0.02] transition-colors border-b border-transparent data-[open=true]:border-white/5"
+                          data-open={isOpen}
+                        >
+                          <div className="flex items-center gap-3">
+                            <span className="font-bold text-white uppercase tracking-wider text-sm">{grupo.color}</span>
+                            <span className="text-xs text-gray-500 bg-white/5 px-2 py-0.5 rounded-full">{grupo.variantes.length} talles</span>
+                          </div>
+                          <div className={`text-gray-500 transition-transform ${isOpen ? 'rotate-90 text-white' : ''}`}>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+                          </div>
+                        </button>
+                        
+                        {isOpen && (
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-left border-collapse">
+                              <thead>
+                                <tr className="bg-[#15151A] text-[10px] text-gray-500 font-bold uppercase tracking-widest border-b border-white/5">
+                                  <th className="px-4 py-3">ID</th>
+                                  <th className="px-4 py-3">Talle</th>
+                                  <th className="px-4 py-3">Color</th>
+                                  <th className="px-4 py-3 text-right">Precio</th>
+                                  <th className="px-4 py-3 text-center">Stock</th>
+                                  <th className="px-4 py-3 text-center">Visible</th>
+                                  <th className="px-4 py-3 text-center w-36">Acciones</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-white/5 text-sm">
+                                {grupo.variantes.map((v: any) => (
+                                  <VarianteRow
+                                    key={v.id}
+                                    variante={v}
+                                    tallesDisponibles={tallesDisponibles}
+                                    productoNombre={product.nombre}
+                                    onRefresh={onRefresh}
+                                  />
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               )}
             </div>
           </td>
@@ -411,7 +454,6 @@ function MobileVarianteItem({
   const [errorMsg, setErrorMsg] = useState('');
   const [talle, setTalle] = useState(variante.talle);
   const [color, setColor] = useState(variante.color);
-  const [precio, setPrecio] = useState(variante.precio);
   const [visible, setVisible] = useState(variante.visible_en_catalogo);
 
   const isCritical = variante.cantidad < 3;
@@ -419,14 +461,13 @@ function MobileVarianteItem({
 
   const handleCancel = () => {
     setTalle(variante.talle); setColor(variante.color);
-    setPrecio(variante.precio);
     setVisible(variante.visible_en_catalogo);
     setStatus('idle'); setErrorMsg(''); setIsEditing(false);
   };
 
   const handleSave = async () => {
     setStatus('saving'); setErrorMsg('');
-    const res = await actualizarVariante(variante.id, { talle, color, precio, visible_en_catalogo: visible });
+    const res = await actualizarVariante(variante.id, { talle, color, visible_en_catalogo: visible });
     if (res.status === 'success') { setIsEditing(false); setStatus('idle'); onRefresh(); }
     else { setStatus('error'); setErrorMsg(res.message); }
   };
@@ -452,10 +493,13 @@ function MobileVarianteItem({
               placeholder="Ej: Negro"
               className="w-full bg-[#0F0F12] text-white border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-[#F400A1]" />
           </div>
-          <div>
-            <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1 block">Precio</label>
-            <input type="number" min="0" step="0.01" value={precio} onChange={e => setPrecio(Number(e.target.value))}
-              className="w-full bg-[#0F0F12] text-white border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-[#F400A1]" />
+          <div className="flex flex-col justify-center">
+            <span className="text-gray-300 text-sm font-medium">
+              {variante.precio.toLocaleString('es-AR', { style: 'currency', currency: 'ARS' })}
+            </span>
+            <span className="text-[10px] text-gray-500 leading-tight mt-0.5">
+              Editá en Stock
+            </span>
           </div>
           <div>
             <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1 block">Stock</label>
@@ -528,15 +572,55 @@ function MobileProductSheet({
     .filter(t => t.tipo_talle === product.tipo_talle)
     .map(t => t.talle);
 
+  const [coloresAbiertos, setColoresAbiertos] = useState<Set<string>>(new Set());
+
+  const toggleColor = (color: string) => {
+    setColoresAbiertos(prev => {
+      const next = new Set(prev);
+      if (next.has(color)) next.delete(color);
+      else next.add(color);
+      return next;
+    });
+  };
+
   return (
     <div className="flex flex-col gap-3">
-      {/* Variantes */}
+      {/* Variantes agrupadas por color */}
       {variants.length === 0 ? (
         <p className="text-sm text-gray-500 text-center py-4">Este producto no tiene variantes.</p>
       ) : (
-        variants.map(v => (
-          <MobileVarianteItem key={v.id} variante={v} tallesDisponibles={tallesDisponibles} productoNombre={product.nombre} onRefresh={onRefresh} />
-        ))
+        <div className="flex flex-col gap-3">
+          {agruparPorColor(variants).map(grupo => {
+            const isOpen = coloresAbiertos.has(grupo.color);
+            return (
+              <div key={grupo.color} className="bg-[#1A1A20] rounded-xl border border-white/5 overflow-hidden shadow-sm">
+                <button
+                  onClick={() => toggleColor(grupo.color)}
+                  className="w-full flex items-center justify-between p-3 bg-[#0F0F12] hover:bg-white/[0.02] transition-colors border-b border-transparent data-[open=true]:border-white/5"
+                  data-open={isOpen}
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="font-bold text-white uppercase tracking-wider text-sm">{grupo.color}</span>
+                    <span className="text-xs text-gray-500 bg-white/5 px-2 py-0.5 rounded-full">{grupo.variantes.length} talles</span>
+                  </div>
+                  <div className={`text-gray-500 transition-transform ${isOpen ? 'rotate-90 text-white' : ''}`}>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+                  </div>
+                </button>
+                
+                {isOpen && (
+                  <div className="flex flex-col gap-px bg-white/5">
+                    {grupo.variantes.map((v: any) => (
+                      <div key={v.id} className="bg-[#0F0F12] p-1">
+                        <MobileVarianteItem variante={v} tallesDisponibles={tallesDisponibles} productoNombre={product.nombre} onRefresh={onRefresh} />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
       )}
 
       {/* Acciones del pie */}
