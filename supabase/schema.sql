@@ -1,174 +1,386 @@
--- ============================================================
--- WEEKSPORT - Esquema de Base de Datos (Supabase / PostgreSQL)
--- Aplicar en: Supabase Dashboard > SQL Editor
--- Versión: 1.1 (Fase 1 - MVP Consolidado)
--- ============================================================
-
--- ============================================================
--- 1. TABLA: categorias
--- Almacena las agrupaciones principales de las prendas.
--- ============================================================
-CREATE TABLE IF NOT EXISTS public.categorias (
-  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  nombre      VARCHAR(100)    NOT NULL,
-  slug        VARCHAR(100)    UNIQUE NOT NULL,
-  created_at  TIMESTAMPTZ     NOT NULL DEFAULT now()
+--
+-- Tipos ENUM
+--
+CREATE TYPE public.genero_producto AS ENUM (
+    'Hombre',
+    'Mujer',
+    'Unisex',
+    'Niños'
 );
 
--- Índice para búsquedas rápidas por slug (filtros de URL)
-CREATE INDEX IF NOT EXISTS idx_categorias_slug ON public.categorias(slug);
-
--- ============================================================
--- 2. TABLA: productos
--- Instancia principal que define el modelo de la indumentaria.
--- ============================================================
-CREATE TABLE IF NOT EXISTS public.productos (
-  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  nombre        VARCHAR(255)    NOT NULL,
-  descripcion   TEXT,
-  categoria_id  UUID            NOT NULL REFERENCES public.categorias(id) ON DELETE RESTRICT,
-  imagenes      TEXT[]          NOT NULL DEFAULT '{}',  -- Array de URLs del Supabase Storage
-  activo        BOOLEAN         NOT NULL DEFAULT true,  -- Soft delete: false = oculto del catálogo
-  created_at    TIMESTAMPTZ     NOT NULL DEFAULT now()
+CREATE TYPE public.tipo_talle AS ENUM (
+    'unico',
+    'sin_talle',
+    'tops',
+    'estandar',
+    'ninos',
+    'colegial'
 );
 
--- Índices para optimizar cruces y filtros
-CREATE INDEX IF NOT EXISTS idx_productos_categoria_id ON public.productos (categoria_id);
-CREATE INDEX IF NOT EXISTS idx_productos_activo       ON public.productos (activo);
+--
+-- Tablas
+--
 
--- ============================================================
--- 3. TABLA: variantes_stock
--- Stock por talle y color. Cardinalidad 1:N respecto a productos.
--- El precio vive aquí para permitir ajustes por variante (ej. talles grandes).
--- ============================================================
-CREATE TABLE IF NOT EXISTS public.variantes_stock (
-  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  producto_id UUID            NOT NULL REFERENCES public.productos(id) ON DELETE CASCADE,
-  talle       VARCHAR(20)     NOT NULL,  -- 'XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL', '4XL'
-  color       VARCHAR(100)    NOT NULL,
-  cantidad    INTEGER         NOT NULL DEFAULT 0 CHECK (cantidad >= 0),
-  precio      NUMERIC(10, 2)  NOT NULL CHECK (precio >= 0)  -- Precio específico de esta variante
+CREATE TABLE public.categorias (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    nombre character varying NOT NULL,
+    slug character varying NOT NULL,
+    created_at timestamp with time zone DEFAULT now(),
+    imagen_url text
 );
 
--- Índice para buscar rápido las variantes de un producto
-CREATE INDEX IF NOT EXISTS idx_variantes_producto_id ON public.variantes_stock (producto_id);
-
--- Restricción única: no puede haber dos variantes con el mismo talle+color para el mismo producto
-ALTER TABLE public.variantes_stock
-  ADD CONSTRAINT uq_variante_producto_talle_color UNIQUE (producto_id, talle, color);
-
-
--- ============================================================
--- 4. ROW LEVEL SECURITY (RLS) - TABLAS DE NEGOCIO
--- LECTURA pública: cualquier visitante puede ver el catálogo.
--- ESCRITURA: solo usuarios autenticados (administradoras con JWT).
--- ============================================================
-
-ALTER TABLE public.categorias       ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.productos        ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.variantes_stock  ENABLE ROW LEVEL SECURITY;
-
--- --- Políticas para `categorias` ---
-CREATE POLICY "Lectura publica de categorias" ON public.categorias FOR SELECT USING (true);
-CREATE POLICY "Solo admins pueden modificar categorias" ON public.categorias FOR ALL TO authenticated USING (true) WITH CHECK (true);
-
--- --- Políticas para `productos` ---
-CREATE POLICY "Lectura publica de productos activos" ON public.productos FOR SELECT USING (activo = true);
-CREATE POLICY "Solo admins pueden modificar productos" ON public.productos FOR ALL TO authenticated USING (true) WITH CHECK (true);
-
--- --- Políticas para `variantes_stock` ---
-CREATE POLICY "Lectura publica de variantes" ON public.variantes_stock FOR SELECT USING (
-  EXISTS (SELECT 1 FROM public.productos p WHERE p.id = producto_id AND p.activo = true)
+CREATE TABLE public.configuracion_sitio (
+    id integer DEFAULT 1 NOT NULL,
+    envio_gratis_texto text,
+    medios_pago_texto text,
+    direccion text,
+    instagram_handle text,
+    telefono_whatsapp text,
+    email_contacto text,
+    texto_legal text,
+    copyright_anio text,
+    hero_titulo text,
+    hero_subtitulo text,
+    hero_descripcion text,
+    hero_imagen_url text,
+    actualizado_en timestamp with time zone DEFAULT now(),
+    hero_imagen_url_mobile text,
+    hero_imagen_posicion_mobile integer DEFAULT 50
 );
-CREATE POLICY "Solo admins pueden modificar variantes" ON public.variantes_stock FOR ALL TO authenticated USING (true) WITH CHECK (true);
+
+CREATE TABLE public.productos (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    nombre character varying(255) NOT NULL,
+    descripcion text,
+    imagenes text[] DEFAULT '{}'::text[] NOT NULL,
+    activo boolean DEFAULT true NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    categoria_id uuid,
+    genero public.genero_producto DEFAULT 'Unisex'::public.genero_producto NOT NULL,
+    tipo_talle public.tipo_talle DEFAULT 'estandar'::public.tipo_talle NOT NULL,
+    precio_promocional numeric
+);
+
+CREATE TABLE public.talles_por_tipo (
+    tipo_talle public.tipo_talle NOT NULL,
+    talle text NOT NULL,
+    orden smallint NOT NULL
+);
+
+CREATE TABLE public.variantes_stock (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    producto_id uuid NOT NULL,
+    talle character varying(20) NOT NULL,
+    color character varying(100) NOT NULL,
+    cantidad integer DEFAULT 0 NOT NULL,
+    precio numeric NOT NULL,
+    visible_en_catalogo boolean DEFAULT true NOT NULL,
+    costo numeric
+);
+
+CREATE TABLE public.ventas_historico (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    created_at timestamp with time zone DEFAULT now(),
+    items jsonb NOT NULL,
+    detalles text
+);
+
+--
+-- Claves Primarias y Únicas (Índices)
+--
+
+ALTER TABLE ONLY public.categorias
+    ADD CONSTRAINT categorias_pkey PRIMARY KEY (id);
+
+ALTER TABLE ONLY public.categorias
+    ADD CONSTRAINT categorias_slug_key UNIQUE (slug);
+
+ALTER TABLE ONLY public.configuracion_sitio
+    ADD CONSTRAINT configuracion_sitio_pkey PRIMARY KEY (id);
+
+ALTER TABLE ONLY public.productos
+    ADD CONSTRAINT productos_pkey PRIMARY KEY (id);
+
+ALTER TABLE ONLY public.talles_por_tipo
+    ADD CONSTRAINT talles_por_tipo_pkey PRIMARY KEY (tipo_talle, talle);
+
+ALTER TABLE ONLY public.variantes_stock
+    ADD CONSTRAINT variantes_stock_pkey PRIMARY KEY (id);
+
+ALTER TABLE ONLY public.variantes_stock
+    ADD CONSTRAINT uq_variante_producto_talle_color UNIQUE (producto_id, talle, color);
+
+ALTER TABLE ONLY public.ventas_historico
+    ADD CONSTRAINT ventas_historico_pkey PRIMARY KEY (id);
+
+--
+-- Índices Adicionales
+--
+
+CREATE INDEX idx_categorias_slug ON public.categorias USING btree (slug);
+CREATE INDEX idx_productos_activo ON public.productos USING btree (activo);
+CREATE INDEX idx_productos_categoria_id ON public.productos USING btree (categoria_id);
+CREATE INDEX idx_productos_tipo_talle ON public.productos USING btree (tipo_talle);
+CREATE INDEX idx_variantes_producto_id ON public.variantes_stock USING btree (producto_id);
+CREATE INDEX idx_variantes_visible ON public.variantes_stock USING btree (visible_en_catalogo);
+
+--
+-- Claves Foráneas
+--
+
+ALTER TABLE ONLY public.productos
+    ADD CONSTRAINT fk_productos_categoria FOREIGN KEY (categoria_id) REFERENCES public.categorias(id) ON DELETE RESTRICT;
+
+ALTER TABLE ONLY public.variantes_stock
+    ADD CONSTRAINT fk_variantes_producto FOREIGN KEY (producto_id) REFERENCES public.productos(id) ON DELETE CASCADE;
 
 
--- ============================================================
--- 5. ROW LEVEL SECURITY (RLS) - STORAGE BUCKET
--- Políticas explícitas para el bucket 'productos-imagenes'.
--- Nota: Asegurarse de haber creado el bucket público en el dashboard.
--- ============================================================
+--
+-- Funciones / RPCs
+--
 
-CREATE POLICY "Administradoras pueden subir imágenes de productos"
-ON storage.objects FOR INSERT
-TO authenticated
-WITH CHECK (bucket_id = 'productos-imagenes');
+CREATE OR REPLACE FUNCTION public.actualizar_precio_color(p_producto_id uuid, p_color text, p_precio_nuevo numeric)
+ RETURNS json
+ LANGUAGE plpgsql
+AS $function$
+    DECLARE
+        v_filas_afectadas int;
+    BEGIN
+        UPDATE variantes_stock
+        SET precio = p_precio_nuevo
+        WHERE producto_id = p_producto_id AND color = p_color;
 
-CREATE POLICY "Administradoras pueden actualizar imágenes de productos"
-ON storage.objects FOR UPDATE
-TO authenticated
-USING (bucket_id = 'productos-imagenes');
+        GET DIAGNOSTICS v_filas_afectadas = ROW_COUNT;
 
-CREATE POLICY "Administradoras pueden eliminar imágenes de productos"
-ON storage.objects FOR DELETE
-TO authenticated
-USING (bucket_id = 'productos-imagenes');
+        IF v_filas_afectadas = 0 THEN
+            RETURN json_build_object('status', 'error', 'message', 'No se encontraron variantes para ese producto y color');
+        END IF;
 
+        RETURN json_build_object('status', 'success', 'filas_actualizadas', v_filas_afectadas);
+    EXCEPTION WHEN OTHERS THEN
+        RETURN json_build_object('status', 'error', 'message', SQLERRM);
+    END;
+    $function$
+;
 
--- ============================================================
--- 6. DATOS INICIALES (MOCK DATA)
--- Inserción de categorías base y productos de prueba
--- ============================================================
+CREATE OR REPLACE FUNCTION public.actualizar_precio_producto(p_producto_id uuid, p_precio_nuevo numeric)
+ RETURNS json
+ LANGUAGE plpgsql
+AS $function$
+    DECLARE
+        v_filas_afectadas int;
+    BEGIN
+        UPDATE variantes_stock
+        SET precio = p_precio_nuevo
+        WHERE producto_id = p_producto_id;
 
--- Insertar las categorías reales del negocio
-INSERT INTO public.categorias (nombre, slug) VALUES
-  ('Remeras', 'remeras'),
-  ('Tops', 'tops'),
-  ('Buzos y Camperas', 'buzos-y-camperas'),
-  ('Calzas', 'calzas'),
-  ('Shorts y Bermudas', 'shorts-y-bermudas'),
-  ('Joggins', 'joggins'),
-  ('Accesorios', 'accesorios')
-ON CONFLICT (slug) DO NOTHING;
+        GET DIAGNOSTICS v_filas_afectadas = ROW_COUNT;
 
--- Insertar Productos (utilizando subqueries para obtener los categoria_id dinámicamente)
-WITH ins_productos AS (
-  INSERT INTO public.productos (nombre, descripcion, categoria_id, imagenes, activo)
-  VALUES 
-    (
-      'Calza Deportiva Pro Flex', 
-      'Calza larga de lycra premium con cintura alta y costuras reforzadas. Ideal para entrenamientos de alta intensidad.', 
-      (SELECT id FROM public.categorias WHERE slug = 'calzas'), 
-      ARRAY['https://placehold.co/600x800/16213e/ffffff?text=Calza+Negra+1', 'https://placehold.co/600x800/16213e/ffffff?text=Calza+Negra+2'], 
-      true
-    ),
-    (
-      'Remera Dry-Fit Aero', 
-      'Remera manga corta confeccionada con tejido tecnológico respirable que mantiene la piel seca.', 
-      (SELECT id FROM public.categorias WHERE slug = 'remeras'), 
-      ARRAY['https://placehold.co/600x800/0f3460/ffffff?text=Remera+Blanca'], 
-      true
-    ),
-    (
-      'Top Deportivo Support', 
-      'Top con soporte medio, espalda deportiva cruzada y tazas desmontables.', 
-      (SELECT id FROM public.categorias WHERE slug = 'tops'), 
-      ARRAY['https://placehold.co/600x800/e94560/ffffff?text=Top+Gris'], 
-      true
-    )
-  RETURNING id, nombre
-)
--- Insertar Variantes asociadas
-INSERT INTO public.variantes_stock (producto_id, talle, color, cantidad, precio)
-VALUES
-  -- Variantes para la Calza Pro Flex
-  ((SELECT id FROM ins_productos WHERE nombre = 'Calza Deportiva Pro Flex'), 'S', 'Negro', 12, 18500.00),
-  ((SELECT id FROM ins_productos WHERE nombre = 'Calza Deportiva Pro Flex'), 'M', 'Negro', 15, 18500.00),
-  ((SELECT id FROM ins_productos WHERE nombre = 'Calza Deportiva Pro Flex'), 'L', 'Negro', 8, 18500.00),
-  ((SELECT id FROM ins_productos WHERE nombre = 'Calza Deportiva Pro Flex'), 'XL', 'Negro', 5, 19800.00),
-  ((SELECT id FROM ins_productos WHERE nombre = 'Calza Deportiva Pro Flex'), 'M', 'Azul Marino', 10, 18500.00),
+        IF v_filas_afectadas = 0 THEN
+            RETURN json_build_object('status', 'error', 'message', 'No se encontraron variantes para ese producto');
+        END IF;
 
-  -- Variantes para la Remera Dry-Fit
-  ((SELECT id FROM ins_productos WHERE nombre = 'Remera Dry-Fit Aero'), 'S', 'Blanco', 20, 12500.00),
-  ((SELECT id FROM ins_productos WHERE nombre = 'Remera Dry-Fit Aero'), 'M', 'Blanco', 25, 12500.00),
-  ((SELECT id FROM ins_productos WHERE nombre = 'Remera Dry-Fit Aero'), 'L', 'Blanco', 15, 12500.00),
-  ((SELECT id FROM ins_productos WHERE nombre = 'Remera Dry-Fit Aero'), 'M', 'Negro', 18, 12500.00),
+        RETURN json_build_object('status', 'success', 'filas_actualizadas', v_filas_afectadas);
+    EXCEPTION WHEN OTHERS THEN
+        RETURN json_build_object('status', 'error', 'message', SQLERRM);
+    END;
+    $function$
+;
 
-  -- Variantes para el Top Support
-  ((SELECT id FROM ins_productos WHERE nombre = 'Top Deportivo Support'), 'S', 'Gris Melange', 10, 9900.00),
-  ((SELECT id FROM ins_productos WHERE nombre = 'Top Deportivo Support'), 'M', 'Gris Melange', 12, 9900.00),
-  ((SELECT id FROM ins_productos WHERE nombre = 'Top Deportivo Support'), 'L', 'Gris Melange', 6, 9900.00);
+CREATE OR REPLACE FUNCTION public.agregar_color_a_producto(p_producto_id uuid, p_color text, p_precio numeric, p_cantidad_inicial integer DEFAULT 0)
+ RETURNS json
+ LANGUAGE plpgsql
+AS $function$
+    DECLARE
+        v_tipo_talle varchar;
+    BEGIN
+        SELECT tipo_talle INTO v_tipo_talle
+        FROM productos
+        WHERE id = p_producto_id;
 
--- ============================================================
--- FIN DEL SCRIPT
--- ============================================================
+        IF v_tipo_talle IS NULL THEN
+            RETURN json_build_object('status', 'error', 'message', 'Producto no encontrado');
+        END IF;
+
+        IF EXISTS (
+            SELECT 1 FROM variantes_stock
+            WHERE producto_id = p_producto_id AND color = p_color
+        ) THEN
+            RETURN json_build_object('status', 'error', 'message', 'Ese color ya existe para este producto');
+        END IF;
+
+        IF NOT EXISTS (SELECT 1 FROM talles_por_tipo WHERE tipo_talle = v_tipo_talle::public.tipo_talle) THEN
+            RETURN json_build_object('status', 'error', 'message', 'No hay talles configurados para este tipo de producto');
+        END IF;
+
+        INSERT INTO variantes_stock (producto_id, talle, color, cantidad, precio, visible_en_catalogo)
+        SELECT p_producto_id, t.talle, p_color, p_cantidad_inicial, p_precio, true
+        FROM talles_por_tipo t
+        WHERE t.tipo_talle = v_tipo_talle::public.tipo_talle
+        ORDER BY t.orden;
+
+        RETURN json_build_object('status', 'success');
+    EXCEPTION WHEN OTHERS THEN
+        RETURN json_build_object('status', 'error', 'message', SQLERRM);
+    END;
+    $function$
+;
+
+CREATE OR REPLACE FUNCTION public.crear_producto_con_variantes(p_nombre character varying, p_descripcion text, p_categoria_id uuid, p_genero character varying, p_tipo_talle character varying, p_precio_inicial numeric, p_imagenes text[] DEFAULT ARRAY[]::text[], p_colores text[] DEFAULT ARRAY[]::text[])
+ RETURNS json
+ LANGUAGE plpgsql
+AS $function$
+    DECLARE
+        v_producto_id UUID;
+        v_array_colores TEXT[];
+    BEGIN
+        INSERT INTO public.productos (nombre, descripcion, categoria_id, genero, tipo_talle, imagenes, activo)
+        VALUES (p_nombre, p_descripcion, p_categoria_id, p_genero::public.genero_producto, p_tipo_talle::public.tipo_talle, p_imagenes, true)
+        RETURNING id INTO v_producto_id;
+
+        IF NOT EXISTS (SELECT 1 FROM talles_por_tipo WHERE tipo_talle = p_tipo_talle::public.tipo_talle) THEN
+            RAISE EXCEPTION 'No hay talles configurados para tipo_talle = %', p_tipo_talle;
+        END IF;
+
+        IF p_colores IS NULL OR array_length(p_colores, 1) IS NULL OR array_length(p_colores, 1) = 0 THEN
+            v_array_colores := ARRAY['Sin color'];
+        ELSE
+            v_array_colores := p_colores;
+        END IF;
+
+        INSERT INTO public.variantes_stock (producto_id, talle, color, cantidad, precio)
+        SELECT v_producto_id, t.talle, c.color, 0, p_precio_inicial
+        FROM talles_por_tipo t
+        CROSS JOIN unnest(v_array_colores) AS c(color)
+        WHERE t.tipo_talle = p_tipo_talle::public.tipo_talle
+        ORDER BY t.orden;
+
+        RETURN json_build_object('status', 'success', 'producto_id', v_producto_id);
+    EXCEPTION WHEN OTHERS THEN
+        RETURN json_build_object('status', 'error', 'message', SQLERRM);
+    END;
+    $function$
+;
+
+CREATE OR REPLACE FUNCTION public.procesar_venta(items_payload jsonb)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+DECLARE
+    v_item record;
+    v_id_variante uuid;
+    v_cantidad_solicitada int;
+    v_cantidad_actual int;
+    v_venta_id uuid;
+BEGIN
+    -- 1. Validar que el payload sea un array
+    IF jsonb_typeof(items_payload) != 'array' THEN
+        RAISE EXCEPTION 'Estructura de payload no soportada por el RPC' USING ERRCODE = '22023';
+    END IF;
+
+    -- Generar ID único para la transacción de venta
+    v_venta_id := gen_random_uuid();
+
+    -- 2. Iterar sobre los items solicitados
+    FOR v_item IN SELECT * FROM jsonb_to_recordset(items_payload) AS x(variante_id uuid, cantidad int)
+    LOOP
+        v_id_variante := v_item.variante_id;
+        v_cantidad_solicitada := v_item.cantidad;
+
+        -- Check de constraint lógico
+        IF v_cantidad_solicitada <= 0 THEN
+            RAISE EXCEPTION 'Violación de restricción de integridad de base de datos' USING ERRCODE = '23514';
+        END IF;
+
+        -- 3. Bloqueo de fila (Pessimistic Locking)
+        SELECT cantidad INTO v_cantidad_actual 
+        FROM variantes_stock 
+        WHERE id = v_id_variante 
+        FOR UPDATE;
+
+        IF NOT FOUND THEN
+            RAISE EXCEPTION 'Registro no encontrado: %', v_id_variante USING ERRCODE = 'P0002';
+        END IF;
+
+        -- 4. Validación de negocio
+        IF v_cantidad_solicitada > v_cantidad_actual THEN
+            RAISE EXCEPTION 'Stock insuficiente para la variante %', v_id_variante USING ERRCODE = 'P0001';
+        END IF;
+
+        -- 5. Actualizar el inventario (stock -> cantidad)
+        UPDATE variantes_stock 
+        SET cantidad = cantidad - v_cantidad_solicitada
+        WHERE id = v_id_variante;
+    END LOOP;
+
+    -- 6. Inserción en el historial (registro único JSON)
+    INSERT INTO ventas_historico (id, items)
+    VALUES (v_venta_id, items_payload);
+
+    -- 7. Respuesta exitosa
+    RETURN jsonb_build_object(
+        'status', 'success',
+        'venta_id', v_venta_id,
+        'message', 'Venta procesada exitosamente'
+    );
+END;
+$function$
+;
+
+-- Seguridad: Revocar acceso público para evitar que actores externos
+-- sin autenticar puedan alterar el stock llamando la función directamente.
+REVOKE EXECUTE ON FUNCTION public.procesar_venta(jsonb) FROM public, anon;
+
+--
+-- Políticas RLS (Row Level Security)
+--
+
+ALTER TABLE public.categorias ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.configuracion_sitio ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.productos ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.talles_por_tipo ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.variantes_stock ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.ventas_historico ENABLE ROW LEVEL SECURITY;
+
+-- categorias
+CREATE POLICY "Permitir lectura pública de categorias" ON public.categorias FOR SELECT TO public USING (true);
+CREATE POLICY "Restringir escritura de categorias a administradoras" ON public.categorias FOR ALL TO authenticated USING ((auth.role() = 'authenticated'::text));
+
+-- configuracion_sitio
+CREATE POLICY "Escritura solo administradores" ON public.configuracion_sitio FOR UPDATE TO authenticated USING (true);
+CREATE POLICY "Lectura pública" ON public.configuracion_sitio FOR SELECT TO public USING (true);
+
+-- productos
+CREATE POLICY "Admins pueden ver todos los productos" ON public.productos FOR SELECT TO authenticated USING (true);
+CREATE POLICY "Lectura publica de productos activos" ON public.productos FOR SELECT TO public USING ((activo = true));
+CREATE POLICY "Solo admins pueden actualizar productos" ON public.productos FOR UPDATE TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "Solo admins pueden eliminar productos" ON public.productos FOR DELETE TO authenticated USING (true);
+CREATE POLICY "Solo admins pueden insertar productos" ON public.productos FOR INSERT TO authenticated WITH CHECK (true);
+
+-- talles_por_tipo
+-- NOTA: talles_por_tipo NO tiene políticas de escritura (INSERT/
+-- UPDATE/DELETE), ni siquiera para el rol authenticated. Esto es
+-- intencional o pendiente de decisión de negocio: hoy solo se puede
+-- modificar corriendo SQL directo en el SQL Editor de Supabase.
+CREATE POLICY "Lectura publica de talles_por_tipo" ON public.talles_por_tipo FOR SELECT TO public USING (true);
+
+-- variantes_stock
+CREATE POLICY "Admins pueden ver todas las variantes" ON public.variantes_stock FOR SELECT TO authenticated USING (true);
+CREATE POLICY "Lectura publica de variantes" ON public.variantes_stock FOR SELECT TO public USING ((EXISTS ( SELECT 1 FROM public.productos p WHERE ((p.id = variantes_stock.producto_id) AND (p.activo = true)))));
+CREATE POLICY "Solo admins pueden actualizar variantes" ON public.variantes_stock FOR UPDATE TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "Solo admins pueden eliminar variantes" ON public.variantes_stock FOR DELETE TO authenticated USING (true);
+CREATE POLICY "Solo admins pueden insertar variantes" ON public.variantes_stock FOR INSERT TO authenticated WITH CHECK (true);
+
+-- ventas_historico
+CREATE POLICY "Permitir inserción exclusiva a administradores" ON public.ventas_historico FOR INSERT TO authenticated WITH CHECK (true);
+CREATE POLICY "Permitir lectura exclusiva a administradores" ON public.ventas_historico FOR SELECT TO authenticated USING (true);
+
+--
+-- Triggers
+--
+-- NOTA: Se verificó el estado de producción en information_schema.triggers
+-- y se confirma que NO existen triggers activos en el esquema public.
+--
+

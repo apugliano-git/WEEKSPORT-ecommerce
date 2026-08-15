@@ -10,37 +10,6 @@ export interface ApiResponse {
 const DUPLICATE_KEY_CODE = '23505';
 const DUPLICATE_MSG = 'Ya existe una variante con ese talle y color para este producto.';
 
-export async function crearVariante(
-  productoId: string,
-  talle: string,
-  color: string,
-  cantidad: number,
-  precio: number,
-  visibleEnCatalogo: boolean
-): Promise<ApiResponse> {
-  try {
-    const { error } = await supabase.from('variantes_stock').insert({
-      producto_id: productoId,
-      talle,
-      color,
-      cantidad,
-      precio,
-      visible_en_catalogo: visibleEnCatalogo,
-    });
-
-    if (error) {
-      if (error.code === DUPLICATE_KEY_CODE) {
-        return { status: 'error', message: DUPLICATE_MSG };
-      }
-      return { status: 'error', message: error.message };
-    }
-
-    return { status: 'success', message: 'Variante creada con éxito.' };
-  } catch (err: any) {
-    return { status: 'error', message: 'Fallo de red o excepción interna al crear variante.' };
-  }
-}
-
 export interface DatosVarianteActualizada {
   talle?: string;
   color?: string;
