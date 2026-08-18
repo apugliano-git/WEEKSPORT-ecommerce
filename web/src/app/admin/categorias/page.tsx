@@ -9,6 +9,9 @@ export default function CategoriasPage() {
   const [isFetching, setIsFetching] = useState(true);
   const [uploadingId, setUploadingId] = useState<string | null>(null);
   const [mensaje, setMensaje] = useState<{ tipo: 'success' | 'error'; texto: string } | null>(null);
+  
+  const [selectedFiles, setSelectedFiles] = useState<Record<string, File>>({});
+  const [previewUrls, setPreviewUrls] = useState<Record<string, string>>({});
 
   useEffect(() => {
     fetchCategorias();
@@ -35,7 +38,16 @@ export default function CategoriasPage() {
     }
   };
 
-  const handleImageChange = async (categoryId: string, file: File) => {
+  const handleFileSelect = (categoryId: string, file: File) => {
+    setSelectedFiles(prev => ({ ...prev, [categoryId]: file }));
+    setPreviewUrls(prev => ({ ...prev, [categoryId]: URL.createObjectURL(file) }));
+    setMensaje(null);
+  };
+
+  const handleSave = async (categoryId: string) => {
+    const file = selectedFiles[categoryId];
+    if (!file) return;
+
     setUploadingId(categoryId);
     setMensaje(null);
     
@@ -61,6 +73,18 @@ export default function CategoriasPage() {
       setMensaje({ tipo: 'success', texto: 'Imagen de categoría actualizada correctamente.' });
       // Actualizar el estado local
       setCategorias(prev => prev.map(c => c.id === categoryId ? { ...c, imagen_url: res.url } : c));
+      
+      // Limpiar archivo seleccionado
+      setSelectedFiles(prev => {
+        const next = { ...prev };
+        delete next[categoryId];
+        return next;
+      });
+      setPreviewUrls(prev => {
+        const next = { ...prev };
+        delete next[categoryId];
+        return next;
+      });
     }
     
     setUploadingId(null);
@@ -99,7 +123,7 @@ export default function CategoriasPage() {
               <div 
                 className="relative w-full sm:w-40 aspect-[4/3] rounded-xl overflow-hidden bg-zinc-950 border border-zinc-800 shrink-0"
                 style={{ 
-                  backgroundImage: `url(${categoria.imagen_url || 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?q=80&w=1000&auto=format&fit=crop'})`,
+                  backgroundImage: `url(${previewUrls[categoria.id] || categoria.imagen_url || 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?q=80&w=1000&auto=format&fit=crop'})`,
                   backgroundSize: 'cover',
                   backgroundPosition: 'center'
                 }}
@@ -113,26 +137,37 @@ export default function CategoriasPage() {
               </div>
 
               {/* Controles */}
-              <div className="flex-1 w-full flex flex-col gap-3">
+              <div className="flex-1 w-full flex flex-col gap-3 justify-center">
                 <div className={`p-3 border rounded-xl transition-all ${
                   uploadingId === categoria.id ? 'bg-zinc-800/30 border-[#F400A1]/50 animate-pulse' : 'bg-[#0F0F12] border-white/10'
                 }`}>
                   <label className="block text-xs font-medium text-gray-400 mb-2">
-                    {uploadingId === categoria.id ? 'Subiendo imagen...' : 'Cambiar Imagen (Max 5MB)'}
+                    {uploadingId === categoria.id ? 'Subiendo imagen...' : 'Seleccionar Imagen (Max 5MB)'}
                   </label>
                   <input 
                     type="file" 
                     accept="image/*"
                     onChange={(e) => {
                       if (e.target.files && e.target.files.length > 0) {
-                        handleImageChange(categoria.id, e.target.files[0]);
+                        handleFileSelect(categoria.id, e.target.files[0]);
                       }
                     }}
                     disabled={uploadingId !== null}
                     className="w-full text-xs text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:font-semibold file:bg-white/10 file:text-white hover:file:bg-white/20 transition-all disabled:opacity-50 cursor-pointer"
                   />
                 </div>
-                {!categoria.imagen_url && (
+
+                {selectedFiles[categoria.id] && (
+                  <button
+                    onClick={() => handleSave(categoria.id)}
+                    disabled={uploadingId === categoria.id}
+                    className="w-full py-2 bg-white text-black text-sm font-bold rounded-xl hover:bg-gray-200 transition-colors disabled:opacity-50"
+                  >
+                    {uploadingId === categoria.id ? 'Guardando...' : 'Guardar Cambios'}
+                  </button>
+                )}
+
+                {!categoria.imagen_url && !selectedFiles[categoria.id] && (
                   <p className="text-[10px] text-amber-400 font-medium">Usando imagen placeholder genérica.</p>
                 )}
               </div>

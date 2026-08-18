@@ -14,11 +14,12 @@ export default async function HomePage() {
   // 1. Obtener Categorías
   const { data: categoriasData } = await supabase
     .from('categorias')
-    .select('id, nombre');
+    .select('id, nombre, imagen_url');
 
   const categorias = (categoriasData || []).map(cat => ({
     id: cat.id,
-    name: cat.nombre // Mapeo temporal de 'nombre' a 'name' para mantener compatibilidad con el front
+    name: cat.nombre, // Mapeo temporal de 'nombre' a 'name' para mantener compatibilidad con el front
+    imagen_url: cat.imagen_url
   }));
 
   // 2. Obtener Productos Activos con sus variantes

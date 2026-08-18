@@ -10,7 +10,7 @@ import { useSearchParams } from 'next/navigation'
 
 interface StoreClientProps {
   productos: Producto[]
-  categorias: { id: string; name: string }[]
+  categorias: { id: string; name: string; imagen_url?: string }[]
   config?: Record<string, any>
 }
 

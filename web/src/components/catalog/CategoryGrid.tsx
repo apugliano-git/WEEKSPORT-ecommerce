@@ -5,6 +5,7 @@ import React from 'react'
 interface Category {
   id: string
   name: string
+  imagen_url?: string
 }
 
 interface CategoryGridProps {
@@ -42,8 +43,7 @@ export function CategoryGrid({ categories, activeCategoryId, onSelectCategory }:
         {categories.slice(0, 8).map((category, index) => {
           const isActive = activeCategoryId === category.id
           // Si la categoría tiene imagen guardada en BD la usará, si no usa el placeholder.
-          // (Asumimos que la prop category ahora podría venir con imagen_url en el futuro cercano)
-          const bgImage = (category as any).imagen_url || placeholders[index % placeholders.length]
+          const bgImage = category.imagen_url || placeholders[index % placeholders.length]
           
           return (
             <button
