@@ -1,83 +1,42 @@
-# WEEKSPORT — Plataforma Integral de E-Commerce & Back-Office Operativo (ERP Ligero)
+# WEEKSPORT — Plataforma de E-Commerce & Back-Office (POS / ERP Ligero)
 
-> Sistema integral para la gestión comercial y operativa de **WEEKSPORT**. Combina un storefront público optimizado para conversión con un núcleo administrativo (Back-Office / ERP ligero) diseñado para el control transaccional de inventario multi-variante, registro de ventas en mostrador (POS) y métricas de negocio en tiempo real.
-
----
-
-## 📌 Visión del Proyecto y Propuesta Técnica
-
-A diferencia de un catálogo digital convencional o una simple pasarela de pedidos, **WEEKSPORT** fue concebido como el **sistema operativo central del negocio**:
-
-1. **Gestión Transaccional con Atomicidad (ACID):** Las operaciones críticas (como el descuento de stock al registrar ventas o la creación masiva de variantes) no delegan la integridad al cliente; se ejecutan mediante **procedimientos almacenados (RPC / PLpgSQL)** en PostgreSQL con rollback automático ante inconsistencias o quiebres de stock.
-2. **Matriz de Variantes Dinámica:** Soporta configuraciones dimensionales complejas (Categoría × Género × Esquema de Talle × Color × Precios) con esquemas de talles desacoplados de la lógica dura y persistidos en base de datos (`talles_por_tipo`).
-3. **Punto de Venta (POS) & Historial Inmutable:** Permite asentar ventas de mostrador con snapshot histórico de precios y variantes, garantizando trazabilidad contable y auditoría del inventario.
-4. **Experiencia de Usuario Híbrida (Storefront + WhatsApp Checkout):** Catálogo ultra-rápido en Next.js 15 (React 19 / Server Components) con carrito persistido y generación automatizada de órdenes listas para procesamiento vía WhatsApp Business.
+Sistema web para la gestión comercial y operativa de **WEEKSPORT**. Integra un catálogo público de venta con checkout directo vía WhatsApp y un panel administrativo para control de inventario multi-variante, registro de ventas de mostrador (POS), personalización de contenidos y métricas en tiempo real.
 
 ---
 
-## 🏗️ Arquitectura del Sistema
+## 📌 Módulos del Sistema
 
-```mermaid
-graph TD
-    subgraph Frontend [Next.js 15 App Router - React 19]
-        Store[Storefront Público / Catálogo]
-        Cart[Carrito & Checkout WhatsApp]
-        AdminDash[Dashboard de Métricas]
-        StockManager[Ajuste Rápido de Stock]
-        ProductManager[CRUD Productos & Promociones]
-        POS[Registro de Ventas en Mostrador]
-    end
+### 1. Storefront Público
+- **Catálogo y Filtros:** Navegación por categorías y filtrado combinado (género, talle, color, rango de precios).
+- **Ficha de Producto (Rutas Interceptadas):** Vista detallada mediante modal o navegación directa (`/producto/[id]`), selector reactivo de variantes según stock disponible y carrusel de imágenes.
+- **Precios y Descuentos:** Soporte para precios promocionales con cálculo visual de descuentos.
+- **Carrito y Checkout:** Carrito persistido localmente con generación de pedido estructurado para cierre de venta por WhatsApp.
+- **Banner Principal:** Hero dinámico con carrusel configurable de imágenes (versiones desktop y mobile).
 
-    subgraph Backend [Supabase / PostgreSQL]
-        Auth[Supabase Auth - JWT / RLS]
-        Storage[Supabase Storage - Galería CDN]
-        DB[(PostgreSQL 15+)]
-        RPC1[RPC: crear_producto_con_variantes]
-        RPC2[RPC: procesar_venta]
-    end
-
-    Store --> DB
-    Cart --> Store
-    AdminDash --> DB
-    StockManager --> DB
-    ProductManager --> Storage
-    ProductManager --> RPC1
-    POS --> RPC2
-    RPC1 --> DB
-    RPC2 --> DB
-```
+### 2. Panel Administrativo (`/admin`)
+- **Dashboard:** Métricas generales del negocio, accesos directos y alertas de stock crítico (`<= 1` o `< 3`).
+- **Alta de Inventario (`/admin/inventario/nuevo`):** Formulario para creación atómica de productos con su matriz completa de talles y colores en base de datos.
+- **Gestión de Catálogo (`/admin/productos`):** Edición de información, reordenamiento de imágenes, control de visibilidad y asignación de precios promocionales.
+- **Ajuste Rápido de Stock (`/admin/stock`):** Interfaz para actualización rápida de existencias, con vista tabular para escritorio y controles táctiles (bottom sheets) para dispositivos móviles.
+- **Punto de Venta / POS (`/admin/ventas`):** Terminal para registrar ventas de mostrador con descuento de stock y guardado de histórico inmutable.
+- **Gestión de Categorías (`/admin/categorias`):** Administración de categorías de producto y asignación de imágenes de portada.
+- **Configuración del Sitio (`/admin/configuracion`):** Edición en vivo de banners del Hero, número de WhatsApp de ventas, textos de envío, medios de pago y datos legales.
+- **Autenticación (`/admin/login`):** Acceso protegido mediante Supabase Auth con sesiones validadas por middleware SSR.
 
 ---
 
 ## 🛠️ Stack Tecnológico
 
-| Capa / Módulo | Tecnología | Justificación Técnica |
+| Componente | Tecnología | Uso en el proyecto |
 |---|---|---|
-| **Framework Web** | [Next.js 15](https://nextjs.org/) (App Router) | Renderizado híbrido (RSC + Client Islands), Server Actions y streaming de datos con performance nativa. |
-| **Librería UI** | [React 19](https://react.dev/) | Acceso a las últimas APIs de concurrencia, transiciones y hooks de estado. |
-| **Tipado** | [TypeScript 5](https://www.typescriptlang.org/) | Tipado estricto end-to-end (Frontend, Payloads RPC y esquemas de BD). |
-| **Estilos & Diseño** | [Tailwind CSS v4](https://tailwindcss.com/) | Motor de estilos de última generación, diseño adaptativo mobile-first y tema oscuro de alto contraste. |
-| **Base de Datos & Auth** | [Supabase](https://supabase.com/) (PostgreSQL 15+) | Base de datos relacional robusta con Row Level Security (RLS) y autenticación JWT. |
-| **Capa Transaccional** | PL/pgSQL (Stored Procedures / RPCs) | Garantía de consistencia ACID, bloqueo de concurrencia y validación de reglas de negocio en BD. |
-| **Gestión de Medios** | Supabase Storage (Buckets) | Almacenamiento optimizado de imágenes de producto con entrega vía CDN. |
-| **Despliegue** | [Vercel](https://vercel.com/) | Edge Network global, CI/CD automático y optimización de assets estáticos. |
-
----
-
-## 📦 Módulos del Sistema
-
-### 1. Storefront Público (Experiencia del Cliente)
-- **Catálogo Dinámico:** Navegación por categorías y filtros combinados (género, talle, color, rango de precios).
-- **Ficha de Producto Detallada:** Selector inteligente de variantes con actualización reactiva de stock disponible, galería interactiva y badges de promociones activas.
-- **Motor de Precios Promocionales:** Visualización de precios tachados con cálculo automático de descuentos.
-- **Carrito & WhatsApp Checkout:** Carrito local persistente que compila los artículos seleccionados y genera un payload estructurado para concretar la compra vía WhatsApp con el comercio.
-
-### 2. Back-Office / ERP Administrativo
-- **Dashboard Ejecutivo:** KPIs en tiempo real (total de productos activos, alertas de productos sin stock, variantes en nivel crítico `<= 1` o `< 3`, últimas ventas registradas).
-- **Alta Integral de Artículos (`/admin/inventario/nuevo`):** Formulario maestro que genera automáticamente toda la matriz de talles y colores en un solo paso atómico mediante la RPC `crear_producto_con_variantes`.
-- **Control & Gestión de Productos (`/admin/productos`):** Edición completa de datos, reordenamiento de galería de imágenes con drag/drop, toggle de visibilidad en tienda y aplicación de precios promocionales con validaciones de umbral.
-- **Ajuste Rápido de Stock (`/admin/stock`):** Interfaz optimizada para inventariado rápido tanto en Desktop (tabla compacta) como en Mobile (BottomSheets táctiles de incremento/decremento directo).
-- **Módulo POS / Ventas (`/admin/ventas`):** Registro de transacciones con selección de variantes y ejecución del procedimiento `procesar_venta` para descuento de existencias con snapshots históricos inmutables.
+| **Frontend Framework** | [Next.js](https://nextjs.org/) (App Router) | Renderizado híbrido (Server y Client Components), Server Actions y rutas API. |
+| **Librería UI** | [React 19](https://react.dev/) | Construcción de interfaces interactivas y hooks de estado. |
+| **Estilos** | [Tailwind CSS v4](https://tailwindcss.com/) | Sistema de utilidades CSS, diseño responsive y modo oscuro. |
+| **Carruseles** | Embla Carousel | Desplazamiento táctil e interactivo en Hero Banner y fichas de producto. |
+| **Base de Datos & Auth** | [Supabase](https://supabase.com/) (PostgreSQL 15+) | Almacenamiento relacional, autenticación JWT, Row Level Security (RLS) y Storage. |
+| **Lógica Transaccional** | PL/pgSQL (Funciones RPC) | Ejecución atómica (ACID) de operaciones críticas como creación de matriz de variantes y ventas con descuento de stock. |
+| **Mantenimiento / Cron** | GitHub Actions / Vercel Cron | Ejecución periódica programada para prevenir la suspensión por inactividad de Supabase. |
+| **Despliegue** | [Vercel](https://vercel.com/) | Hosting del frontend y funciones serverless. |
 
 ---
 
@@ -85,37 +44,56 @@ graph TD
 
 ```
 WEEKSPORT/
-├── web/                           # Aplicación Next.js 15
+├── .github/
+│   └── workflows/
+│       └── supabase-keep-alive.yml   # Workflow para ping periódico a Supabase
+├── supabase/
+│   ├── schema.sql                    # Definición completa de tablas, ENUMs, RLS y RPCs
+│   └── *.sql                         # Scripts de migración y parches individuales
+├── web/                              # Aplicación Next.js
+│   ├── public/                       # Assets estáticos (iconos, imágenes)
 │   ├── src/
 │   │   ├── app/
-│   │   │   ├── (store)/           # Rutas públicas del catálogo y checkout
-│   │   │   │   ├── @modal/        # Parallel routes / Intercepting routes (modales)
-│   │   │   │   └── producto/[id]/ # Ficha de detalle de producto
-│   │   │   ├── admin/             # Módulos del Back-Office / ERP
-│   │   │   │   ├── inventario/    # Alta de artículos
-│   │   │   │   ├── productos/     # Gestión de catálogo y promociones
-│   │   │   │   ├── stock/         # Ajuste rápido de inventario
-│   │   │   │   └── ventas/        # Terminal POS de registro de ventas
-│   │   │   └── globals.css        # Configuración de diseño y Tailwind CSS v4
+│   │   │   ├── (store)/              # Rutas del catálogo público
+│   │   │   │   ├── @modal/           # Ruta interceptada para modal de producto
+│   │   │   │   └── producto/[id]/    # Vista completa de producto
+│   │   │   ├── admin/                # Rutas del panel administrativo
+│   │   │   │   ├── categorias/       # Administración de categorías
+│   │   │   │   ├── configuracion/    # Ajustes generales y Hero Banner
+│   │   │   │   ├── inventario/       # Alta de productos y variantes
+│   │   │   │   ├── login/            # Inicio de sesión administrativo
+│   │   │   │   ├── productos/        # Edición y catálogo administrativo
+│   │   │   │   ├── stock/            # Ajuste rápido de stock
+│   │   │   │   └── ventas/           # Terminal de punto de venta (POS)
+│   │   │   ├── api/
+│   │   │   │   └── cron/keepalive/   # Endpoint auxiliar para healthcheck
+│   │   │   ├── globals.css           # Estilos base y variables de Tailwind v4
+│   │   │   ├── layout.tsx            # Root layout
+│   │   │   └── manifest.ts           # Configuración PWA / Web Manifest
 │   │   ├── components/
-│   │   │   ├── admin/             # Componentes de administración (tablas, formularios, modales)
-│   │   │   ├── cart/              # Componentes de carrito y drawer
-│   │   │   ├── catalog/           # Tarjetas y filtros del catálogo
-│   │   │   ├── product/           # Galería y selector de variantes
-│   │   │   └── ui/                # Sistema de diseño base (Botones, Badges, Modales, Switches)
+│   │   │   ├── admin/                # Componentes del panel administrativo
+│   │   │   ├── cart/                 # Drawer y lógica de carrito
+│   │   │   ├── catalog/              # Tarjetas de producto, filtros y Hero
+│   │   │   ├── layout/               # Header, Footer y barra de búsqueda
+│   │   │   ├── product/              # Galería, modal y selector de variantes
+│   │   │   └── ui/                   # Componentes base reutilizables
+│   │   ├── context/                  # Contextos de React (CartContext, SearchContext)
 │   │   ├── lib/
-│   │   │   ├── supabase/          # Clientes Supabase (Browser Client, Server Client SSR)
-│   │   │   ├── dashboardService.ts# Métricas y analítica del panel
-│   │   │   ├── inventarioService.ts# Orquestación de stock y llamadas RPC
-│   │   │   ├── productoService.ts # Mutaciones de catálogo y promociones
-│   │   │   ├── variantesService.ts# CRUD individual de variantes
-│   │   │   └── ventasService.ts   # Procesamiento transaccional de ventas
-│   │   └── types/                 # Interfaces y tipos de dominio (TypeScript)
-│   ├── public/                    # Assets estáticos y branding
-│   ├── .env.example               # Plantilla de variables de entorno
+│   │   │   ├── supabase/             # Clientes Supabase (Browser, Server SSR, Middleware)
+│   │   │   ├── dashboardService.ts   # Consultas de analítica y métricas
+│   │   │   ├── inventarioService.ts  # Manejo de stock e imágenes
+│   │   │   ├── productoService.ts    # CRUD de productos y promociones
+│   │   │   ├── variantesService.ts   # CRUD de variantes individuales
+│   │   │   └── ventasService.ts      # Invocación de RPC para ventas
+│   │   ├── proxy.ts                  # Integración de middleware de Next.js
+│   │   ├── types/                    # Tipos e interfaces de TypeScript
+│   │   └── utils/                    # Funciones utilitarias (generador de WhatsApp, etc.)
 │   ├── package.json
-│   └── tsconfig.json
-└── README.md                      # Documentación principal del repositorio
+│   ├── tsconfig.json
+│   └── vercel.json                   # Configuración de despliegue y cron en Vercel
+├── ARCHITECTURE.md                   # Documentación técnica de arquitectura y diseño
+├── DATABASE.md                       # Diccionario de base de datos, RPCs y RLS
+└── README.md                         # Guía general y puesta en marcha
 ```
 
 ---
@@ -123,57 +101,41 @@ WEEKSPORT/
 ## 🚀 Puesta en Marcha Local
 
 ### Prerrequisitos
-- Node.js 20.x o superior
-- NPM o PNPM
-- Cuenta activa en [Supabase](https://supabase.com)
+- Node.js 20 o superior
+- Gestor de paquetes `npm`
+- Proyecto configurado en [Supabase](https://supabase.com)
 
-### 1. Clonar el proyecto e instalar dependencias
+### 1. Clonar el repositorio e instalar dependencias
 ```bash
-git clone https://github.com/tu-usuario/weeksport.git
-cd weeksport/web
+git clone https://github.com/apugliano-git/WEEKSPORT-ecommerce.git
+cd WEEKSPORT-ecommerce/web
 npm install
 ```
 
-### 2. Configurar variables de entorno
-Crear un archivo `.env.local` en la carpeta `web/` tomando como base `.env.example`:
+### 2. Variables de entorno
+Crear un archivo `.env.local` dentro de la carpeta `web/` con los siguientes datos:
 
-```bash
-cp .env.example .env.local
-```
-
-Completar con las credenciales del proyecto Supabase (**Project Settings → API**):
 ```env
 NEXT_PUBLIC_SUPABASE_URL="https://tu-proyecto.supabase.co"
-NEXT_PUBLIC_SUPABASE_ANON_KEY="tu-anon-key-publica"
+NEXT_PUBLIC_SUPABASE_ANON_KEY="tu-clave-anon-publica"
 ```
 
-### 3. Configuración de Base de Datos y Funciones RPC
-En el **SQL Editor** de Supabase, asegurar la ejecución de los esquemas base de datos y las dos funciones críticas:
-- `crear_producto_con_variantes(...)`: Generación atómica del producto y su producto cartesiano de talles × colores.
-- `procesar_venta(...)`: Descuento de stock en bloque con rollback ante inconsistencias.
-- Tabla auxiliar `talles_por_tipo`: Repositorio ordenado de talles para esquemas estándar, tops, calzado o talle único.
+### 3. Configuración de Base de Datos en Supabase
+1. Ingresar al **SQL Editor** de Supabase.
+2. Ejecutar el contenido del archivo `supabase/schema.sql`. Esto creará los tipos ENUM, las tablas con sus restricciones, los esquemas iniciales de talles (`talles_por_tipo`), los procedimientos almacenados (RPCs) y las políticas de seguridad (RLS).
+3. En la sección **Storage** de Supabase, crear un bucket público llamado `productos` para permitir la carga y lectura de imágenes.
 
-### 4. Ejecutar el entorno de desarrollo
+### 4. Iniciar el entorno de desarrollo
 ```bash
 npm run dev
 ```
-La aplicación iniciará en `http://localhost:3000`.
+La aplicación estará disponible en `http://localhost:3000`.
 
 ---
 
-## 🔐 Seguridad y Reglas de Negocio
+## 📚 Documentación Técnica Detallada
 
-1. **Row Level Security (RLS):**
-   - Catálogo público accesible en modo solo lectura (`SELECT`) para usuarios anónimos (`anon`).
-   - Modificaciones, inserciones y eliminaciones restringidas a usuarios autenticados con rol de administrador.
-2. **Defensas a Nivel de Base de Datos:**
-   - Constraints `CHECK (cantidad >= 0)` en variantes para evitar stock negativo ante condiciones de carrera.
-   - Restricciones de unicidad compuestas `UNIQUE (producto_id, talle, color)` para garantizar consistencia del inventario.
-3. **Variables Protegidas:**
-   - La clave `SERVICE_ROLE` de Supabase jamás se expone en el cliente web ni en variables de entorno públicas.
+Para consultar especificaciones técnicas profundas, revisar los siguientes documentos:
 
----
-
-## 📄 Licencia y Créditos
-
-Desarrollado exclusivamente para **WEEKSPORT**. Todos los derechos reservados.
+- **[ARCHITECTURE.md](file:///home/augep/Documentos/Proyectos/WEEKSPORT/ARCHITECTURE.md):** Patrones de renderizado en Next.js, flujo de autenticación SSR, ciclo de transacciones ACID y diseño de soluciones.
+- **[DATABASE.md](file:///home/augep/Documentos/Proyectos/WEEKSPORT/DATABASE.md):** Diccionario de tablas, tipos de datos, funciones RPC detalladas, restricciones de integridad y políticas RLS.
