@@ -45,7 +45,9 @@ CREATE TABLE public.configuracion_sitio (
     hero_imagen_url text,
     actualizado_en timestamp with time zone DEFAULT now(),
     hero_imagen_url_mobile text,
-    hero_imagen_posicion_mobile integer DEFAULT 50
+    hero_imagen_posicion_mobile integer DEFAULT 50,
+    hero_imagen_posicion_y_desktop integer DEFAULT 50,
+    hero_imagen_posicion_y_mobile integer DEFAULT 50
 );
 
 CREATE TABLE public.productos (

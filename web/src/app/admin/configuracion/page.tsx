@@ -19,7 +19,9 @@ export default function ConfiguracionPage() {
     hero_descripcion: '',
     hero_imagen_url: '',
     hero_imagen_url_mobile: '',
-    hero_imagen_posicion_mobile: 50
+    hero_imagen_posicion_mobile: 50,
+    hero_imagen_posicion_y_desktop: 50,
+    hero_imagen_posicion_y_mobile: 50
   });
 
   const [isLoading, setIsLoading] = useState(false);
@@ -55,7 +57,9 @@ export default function ConfiguracionPage() {
             hero_descripcion: data.hero_descripcion || '',
             hero_imagen_url: data.hero_imagen_url || '',
             hero_imagen_url_mobile: data.hero_imagen_url_mobile || '',
-            hero_imagen_posicion_mobile: data.hero_imagen_posicion_mobile ?? 50
+            hero_imagen_posicion_mobile: data.hero_imagen_posicion_mobile ?? 50,
+            hero_imagen_posicion_y_desktop: data.hero_imagen_posicion_y_desktop ?? 50,
+            hero_imagen_posicion_y_mobile: data.hero_imagen_posicion_y_mobile ?? 50
           });
         }
       } catch (err) {
@@ -321,6 +325,42 @@ export default function ConfiguracionPage() {
               </div>
             </div>
 
+            <div>
+              <label className="block text-sm font-medium text-zinc-400 mb-1.5 flex justify-between">
+                <span>Posición Vertical Desktop (Y-Axis)</span>
+                <span className="text-[#F400A1] font-bold">{config.hero_imagen_posicion_y_desktop}%</span>
+              </label>
+              <input 
+                type="range" name="hero_imagen_posicion_y_desktop" min="0" max="100" 
+                value={config.hero_imagen_posicion_y_desktop} 
+                onChange={(e) => setConfig(prev => ({ ...prev, hero_imagen_posicion_y_desktop: Number(e.target.value) }))}
+                className="w-full accent-[#F400A1] h-2 bg-zinc-800 rounded-lg appearance-none cursor-pointer"
+              />
+              <div className="flex justify-between text-[10px] text-zinc-500 mt-1 uppercase font-bold tracking-wider">
+                <span>Arriba (0%)</span>
+                <span>Centro (50%)</span>
+                <span>Abajo (100%)</span>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-zinc-400 mb-1.5 flex justify-between">
+                <span>Posición Vertical Mobile (Y-Axis)</span>
+                <span className="text-[#F400A1] font-bold">{config.hero_imagen_posicion_y_mobile}%</span>
+              </label>
+              <input 
+                type="range" name="hero_imagen_posicion_y_mobile" min="0" max="100" 
+                value={config.hero_imagen_posicion_y_mobile} 
+                onChange={(e) => setConfig(prev => ({ ...prev, hero_imagen_posicion_y_mobile: Number(e.target.value) }))}
+                className="w-full accent-[#F400A1] h-2 bg-zinc-800 rounded-lg appearance-none cursor-pointer"
+              />
+              <div className="flex justify-between text-[10px] text-zinc-500 mt-1 uppercase font-bold tracking-wider">
+                <span>Arriba (0%)</span>
+                <span>Centro (50%)</span>
+                <span>Abajo (100%)</span>
+              </div>
+            </div>
+
             {/* PREVIEW SECTIONS */}
             <div className="mt-6 border-t border-zinc-800/50 pt-6">
               <h3 className="text-sm font-semibold text-zinc-400 mb-4 flex items-center gap-2">
@@ -337,7 +377,7 @@ export default function ConfiguracionPage() {
                     style={{ 
                       backgroundImage: `url(${config.hero_imagen_url || 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?q=80&w=2070&auto=format&fit=crop'})`,
                       backgroundSize: 'cover',
-                      backgroundPosition: 'center'
+                      backgroundPosition: `center ${config.hero_imagen_posicion_y_desktop}%`
                     }}
                   >
                     <div className="absolute inset-0 bg-gradient-to-t from-[#0F0F12]/90 via-[#0F0F12]/60 to-transparent pointer-events-none" />
@@ -365,7 +405,7 @@ export default function ConfiguracionPage() {
                       style={{ 
                         backgroundImage: `url(${config.hero_imagen_url_mobile || config.hero_imagen_url || 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?q=80&w=2070&auto=format&fit=crop'})`,
                         backgroundSize: 'cover',
-                        backgroundPosition: `${config.hero_imagen_posicion_mobile}% center`
+                        backgroundPosition: `${config.hero_imagen_posicion_mobile}% ${config.hero_imagen_posicion_y_mobile}%`
                       }}
                     >
                       <div className="absolute inset-0 bg-gradient-to-t from-[#0F0F12] via-[#0F0F12]/70 to-transparent pointer-events-none" />

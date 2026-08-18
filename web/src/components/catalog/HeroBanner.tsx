@@ -9,6 +9,8 @@ interface HeroBannerProps {
   heroImagenUrl?: string
   heroImagenUrlMobile?: string
   heroImagenPosicionMobile?: number
+  heroImagenPosicionYDesktop?: number
+  heroImagenPosicionYMobile?: number
 }
 
 export function HeroBanner({ 
@@ -17,7 +19,9 @@ export function HeroBanner({
   heroDescripcion, 
   heroImagenUrl,
   heroImagenUrlMobile,
-  heroImagenPosicionMobile = 50 
+  heroImagenPosicionMobile = 50,
+  heroImagenPosicionYDesktop = 50,
+  heroImagenPosicionYMobile = 50
 }: HeroBannerProps) {
   
   const bgDesktop = heroImagenUrl || 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?q=80&w=2070&auto=format&fit=crop';
@@ -30,8 +34,11 @@ export function HeroBanner({
       
       {/* Background Image - Desktop */}
       <div 
-        className="absolute inset-0 bg-cover bg-center hidden md:block"
-        style={{ backgroundImage: `url(${bgDesktop})` }}
+        className="absolute inset-0 bg-cover hidden md:block"
+        style={{ 
+          backgroundImage: `url(${bgDesktop})`,
+          backgroundPosition: `center ${heroImagenPosicionYDesktop}%` 
+        }}
       />
       
       {/* Background Image - Mobile */}
@@ -39,7 +46,7 @@ export function HeroBanner({
         className="absolute inset-0 bg-cover md:hidden"
         style={{ 
           backgroundImage: `url(${bgMobile})`,
-          backgroundPosition: `${heroImagenPosicionMobile}% center` 
+          backgroundPosition: `${heroImagenPosicionMobile}% ${heroImagenPosicionYMobile}%` 
         }}
       />
 
