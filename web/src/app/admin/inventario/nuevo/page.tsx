@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { crearArticuloCompleto, subirImagenProducto } from '@/lib/inventarioService';
+import { crearArticuloCompleto, subirImagenProducto, obtenerTallesPorTipo } from '@/lib/inventarioService';
 import { createClient } from '@/lib/supabase/client';
 
 // Normaliza un nombre de color: primera letra mayúscula, resto minúsculas
@@ -27,6 +27,20 @@ export default function NuevoArticuloPage() {
   // Estados del nuevo flujo de stock
   const [tipoTalle, setTipoTalle] = useState('estandar');
   const [precioInicial, setPrecioInicial] = useState<number | ''>('');
+  const [tallesDisponibles, setTallesDisponibles] = useState<string[]>([]);
+  const [cantidadesPorTalle, setCantidadesPorTalle] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    const fetchTalles = async () => {
+      const talles = await obtenerTallesPorTipo(tipoTalle);
+      setTallesDisponibles(talles);
+      
+      const nuevasCantidades: Record<string, number> = {};
+      talles.forEach(t => nuevasCantidades[t] = 0);
+      setCantidadesPorTalle(nuevasCantidades);
+    };
+    fetchTalles();
+  }, [tipoTalle]);
 
   // Estado de colores
   const [colores, setColores] = useState<string[]>([]);
@@ -133,7 +147,8 @@ export default function NuevoArticuloPage() {
       tipo_talle: tipoTalle,
       precio_inicial: Number(precioInicial),
       imagenes: urlsImagenes,
-      colores: colores.length > 0 ? colores : []
+      colores: colores.length > 0 ? colores : [],
+      cantidades: cantidadesPorTalle
     };
 
     const result = await crearArticuloCompleto(payload);
@@ -363,8 +378,28 @@ export default function NuevoArticuloPage() {
                 Colores
               </h2>
               <p className="text-xs text-zinc-500 mb-4">
-                El sistema generará los talles de <span className="text-zinc-300 font-medium">{tipoTalle === 'estandar' ? 'XS a 4XL' : tipoTalle === 'tops' ? '85 a 120+' : tipoTalle === 'unico' ? 'Talle Único' : 'Sin talle'}</span> por cada color que agregues. Si no agregás ninguno, se creará sin color.
+                Ingresá el stock inicial de cada talle para el producto. Si agregás colores, este stock inicial será igual para cada color generado.
               </p>
+
+              {tallesDisponibles.length > 0 && (
+                <div className="mb-6">
+                  <label className="block text-sm font-medium text-zinc-400 mb-3">Cantidades por Talle</label>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                    {tallesDisponibles.map(talle => (
+                      <div key={talle} className="flex items-center gap-2 bg-zinc-950 p-2 rounded-xl border border-zinc-800 focus-within:border-[#F400A1] focus-within:ring-1 focus-within:ring-[#F400A1] transition-colors">
+                        <label className="text-sm font-bold text-zinc-300 w-12 text-center shrink-0">{talle}</label>
+                        <input
+                          type="number"
+                          min="0"
+                          value={cantidadesPorTalle[talle] ?? 0}
+                          onChange={(e) => setCantidadesPorTalle(prev => ({ ...prev, [talle]: Number(e.target.value) || 0 }))}
+                          className="w-full bg-transparent outline-none text-white text-sm"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Input de color */}
               <div className="flex gap-2 mb-4 overflow-hidden">

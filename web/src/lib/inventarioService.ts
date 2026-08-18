@@ -22,6 +22,7 @@ export interface NuevoArticuloPayload {
   precio_inicial: number;
   imagenes?: string[];
   colores?: string[]; // Array de nombres de colores para generar variantes
+  cantidades?: Record<string, number>;
 }
 
 /**
@@ -61,7 +62,8 @@ export async function crearArticuloCompleto(payload: NuevoArticuloPayload): Prom
       p_tipo_talle: payload.tipo_talle,
       p_precio_inicial: payload.precio_inicial,
       p_imagenes: payload.imagenes || [],
-      p_colores: payload.colores || []
+      p_colores: payload.colores || [],
+      p_cantidades: payload.cantidades || {}
     });
 
     if (error) {
@@ -193,4 +195,16 @@ export async function actualizarPrecioColor(
   } catch (err: any) {
     return { status: 'error', message: 'Fallo de red o excepción interna al actualizar precio.' };
   }
+}
+
+export async function obtenerTallesPorTipo(tipoTalle: string): Promise<string[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from('talles_por_tipo')
+    .select('talle, orden')
+    .eq('tipo_talle', tipoTalle)
+    .order('orden', { ascending: true });
+
+  if (error || !data) return [];
+  return data.map(row => row.talle);
 }
