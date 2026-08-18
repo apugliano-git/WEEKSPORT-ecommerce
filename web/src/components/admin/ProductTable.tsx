@@ -704,6 +704,14 @@ export function ProductTable({ productos, categorias, tallesPorTipo }: ProductTa
     });
   }, [productos, searchTerm, selectedCategoryId, categoryMap, hideOutOfStock]);
 
+  const [cantidadVisibleAdmin, setCantidadVisibleAdmin] = useState(20);
+
+  React.useEffect(() => {
+    setCantidadVisibleAdmin(20);
+  }, [searchTerm, selectedCategoryId, hideOutOfStock]);
+
+  const visibleProducts = filteredProducts.slice(0, cantidadVisibleAdmin);
+
   const handleEdit = (product: Producto) => {
     setEditingProduct({
       id: product.id,
@@ -804,15 +812,26 @@ export function ProductTable({ productos, categorias, tallesPorTipo }: ProductTa
               </tr>
             </thead>
             <tbody className="text-sm">
-              {filteredProducts.length === 0 ? (
+              {visibleProducts.length === 0 ? (
                 <tr><td colSpan={7} className="px-6 py-12 text-center text-gray-500">No se encontraron productos que coincidan con la búsqueda.</td></tr>
               ) : (
-                filteredProducts.map(prod => (
+                visibleProducts.map(prod => (
                   <ProductRow key={prod.id} product={prod} categoryMap={categoryMap} tallesPorTipo={tallesPorTipo} onEdit={handleEdit} onPromo={handlePromo} onRefresh={() => router.refresh()} />
                 ))
               )}
             </tbody>
           </table>
+          
+          {cantidadVisibleAdmin < filteredProducts.length && (
+            <div className="p-4 flex justify-center border-t border-white/5 bg-[#0F0F12]">
+              <button 
+                onClick={() => setCantidadVisibleAdmin(prev => prev + 20)}
+                className="px-6 py-2.5 border border-[#F400A1]/50 text-[#F400A1] font-bold rounded-xl hover:bg-[#F400A1]/10 transition-colors text-sm"
+              >
+                Ver más productos
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -846,30 +865,42 @@ export function ProductTable({ productos, categorias, tallesPorTipo }: ProductTa
 
         {/* Tarjetas de productos */}
         <div className="flex flex-col gap-3">
-          {filteredProducts.length === 0 ? (
+          {visibleProducts.length === 0 ? (
             <div className="bg-[#1A1A20] rounded-2xl border border-white/5 p-8 text-center">
               <p className="text-gray-500 text-sm">No se encontraron productos.</p>
             </div>
           ) : (
-            filteredProducts.map(prod => {
-              const totalStock = (prod.variantes_stock || []).reduce((sum, v) => sum + v.cantidad, 0);
-              const isCritical = totalStock < 3;
-              const isOutOfStockTotal = totalStock === 0;
-              return (
-                <button key={prod.id} onClick={() => setSelectedProductSheet(prod)}
-                  className="flex items-center justify-between gap-3 p-4 bg-[#1A1A20] border border-white/5 rounded-2xl shadow-lg hover:border-white/10 active:bg-white/5 transition-colors text-left">
-                  <span className="font-bold text-white text-sm flex-1 leading-snug">{prod.nombre}</span>
-                  <div className="flex flex-col items-end gap-1.5 shrink-0">
-                    <Badge variant={isOutOfStockTotal ? 'danger' : isCritical ? 'warning' : 'success'} pulse={isCritical}>
-                      {totalStock} uds
-                    </Badge>
-                    <Badge variant={prod.activo ? 'success' : 'neutral'}>
-                      {prod.activo ? 'Activo' : 'Inactivo'}
-                    </Badge>
-                  </div>
-                </button>
-              );
-            })
+            <>
+              {visibleProducts.map(prod => {
+                const totalStock = (prod.variantes_stock || []).reduce((sum, v) => sum + v.cantidad, 0);
+                const isCritical = totalStock < 3;
+                const isOutOfStockTotal = totalStock === 0;
+                return (
+                  <button key={prod.id} onClick={() => setSelectedProductSheet(prod)}
+                    className="flex items-center justify-between gap-3 p-4 bg-[#1A1A20] border border-white/5 rounded-2xl shadow-lg hover:border-white/10 active:bg-white/5 transition-colors text-left">
+                    <span className="font-bold text-white text-sm flex-1 leading-snug">{prod.nombre}</span>
+                    <div className="flex flex-col items-end gap-1.5 shrink-0">
+                      <Badge variant={isOutOfStockTotal ? 'danger' : isCritical ? 'warning' : 'success'} pulse={isCritical}>
+                        {totalStock} uds
+                      </Badge>
+                      <Badge variant={prod.activo ? 'success' : 'neutral'}>
+                        {prod.activo ? 'Activo' : 'Inactivo'}
+                      </Badge>
+                    </div>
+                  </button>
+                );
+              })}
+              {cantidadVisibleAdmin < filteredProducts.length && (
+                <div className="flex justify-center mt-2">
+                  <button 
+                    onClick={() => setCantidadVisibleAdmin(prev => prev + 20)}
+                    className="px-6 py-3 border border-[#F400A1]/50 text-[#F400A1] font-bold rounded-xl hover:bg-[#F400A1]/10 transition-colors text-sm"
+                  >
+                    Ver más productos
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>

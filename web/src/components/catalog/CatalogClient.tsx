@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useMemo } from 'react'
+import React, { useMemo, useState, useEffect } from 'react'
 import { Producto } from '@/types'
 import { ProductCard } from './ProductCard'
 import { useSearch } from '@/context/SearchContext'
@@ -13,6 +13,7 @@ interface CatalogClientProps {
 
 export function CatalogClient({ productos, categorias, activeCategoryId = null }: CatalogClientProps) {
   const { searchQuery } = useSearch()
+  const [cantidadVisible, setCantidadVisible] = useState(12)
 
   const filteredProductos = useMemo(() => {
     let result = productos;
@@ -33,6 +34,12 @@ export function CatalogClient({ productos, categorias, activeCategoryId = null }
     return result
   }, [productos, activeCategoryId, searchQuery])
 
+  useEffect(() => {
+    setCantidadVisible(12)
+  }, [activeCategoryId, searchQuery])
+
+  const productosVisibles = filteredProductos.slice(0, cantidadVisible)
+
   return (
     <div className="w-full">
       <div className="mb-8">
@@ -45,11 +52,24 @@ export function CatalogClient({ productos, categorias, activeCategoryId = null }
           <p className="text-lg font-medium">No hay productos que coincidan con la búsqueda.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
-          {filteredProductos.map(producto => (
-            <ProductCard key={producto.id} producto={producto} />
-          ))}
-        </div>
+        <>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
+            {productosVisibles.map(producto => (
+              <ProductCard key={producto.id} producto={producto} />
+            ))}
+          </div>
+          
+          {cantidadVisible < filteredProductos.length && (
+            <div className="mt-12 flex justify-center">
+              <button 
+                onClick={() => setCantidadVisible(prev => prev + 12)}
+                className="px-6 py-3 border border-[#F400A1]/50 text-[#F400A1] font-bold rounded-xl hover:bg-[#F400A1]/10 transition-colors"
+              >
+                Ver más productos
+              </button>
+            </div>
+          )}
+        </>
       )}
     </div>
   )
