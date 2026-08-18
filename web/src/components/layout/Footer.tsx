@@ -10,7 +10,7 @@ export async function Footer() {
   const medios_pago_texto = config?.medios_pago_texto || 'Efectivo, transferencia, tarjeta de débito y crédito';
   const direccion = config?.direccion || 'Triunvirato 1194, esq. Vélez Sarsfield. Quilmes Oeste';
   const instagram_handle = config?.instagram_handle || 'weeksport_';
-  const telefono_whatsapp = config?.telefono_whatsapp || '+54 9 11 XXXX-XXXX';
+  const telefono_whatsapp = config?.telefono_whatsapp || '+54 9 11 30947663';
   const email_contacto = config?.email_contacto || 'weeksport1310@gmail.com';
   const texto_legal = config?.texto_legal || 'La presente página es solo a título informativo. Para formalizar la compra usted será redirigido al contacto del vendedor una vez seleccionados los productos.';
   const copyright_anio = config?.copyright_anio || '2026';
