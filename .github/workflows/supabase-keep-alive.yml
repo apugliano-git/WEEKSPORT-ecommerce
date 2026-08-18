@@ -1,0 +1,27 @@
+name: Keep Supabase Alive
+
+on:
+  schedule:
+    # Se ejecuta a las 00:00 (UTC) todos los miércoles (3) y domingos (0)
+    - cron: '0 0 * * 0,3'
+  # Permite ejecutar el script manualmente desde la pestaña "Actions" en GitHub
+  workflow_dispatch:
+
+jobs:
+  ping-supabase:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Hacer Ping a la API de Supabase
+        run: |
+          echo "Haciendo petición a Supabase para evitar que se apague..."
+          STATUSCODE=$(curl -s -o /dev/null -w "%{http_code}" \
+            -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}" \
+            "${{ secrets.SUPABASE_URL }}/rest/v1/?apikey=${{ secrets.SUPABASE_ANON_KEY }}")
+          
+          if [ "$STATUSCODE" -eq 200 ]; then
+            echo "Ping exitoso. Código: $STATUSCODE"
+          else
+            echo "Error en el ping. Código: $STATUSCODE"
+            exit 1
+          fi
