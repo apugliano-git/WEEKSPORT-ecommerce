@@ -4,6 +4,15 @@ import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { subirImagenProducto } from '@/lib/inventarioService';
 
+export type Slide = {
+  id: string;
+  desktop_url: string;
+  mobile_url: string;
+  pos_y_desktop: number;
+  pos_y_mobile: number;
+  pos_x_mobile: number;
+};
+
 export default function ConfiguracionPage() {
   const [config, setConfig] = useState({
     envio_gratis_texto: '',
@@ -17,17 +26,12 @@ export default function ConfiguracionPage() {
     hero_titulo: '',
     hero_subtitulo: '',
     hero_descripcion: '',
-    hero_imagen_url: '',
-    hero_imagen_url_mobile: '',
-    hero_imagen_posicion_mobile: 50,
-    hero_imagen_posicion_y_desktop: 50,
-    hero_imagen_posicion_y_mobile: 50
+    hero_slides: [] as Slide[]
   });
 
   const [isLoading, setIsLoading] = useState(false);
   const [isFetching, setIsFetching] = useState(true);
-  const [isUploadingHero, setIsUploadingHero] = useState(false);
-  const [isUploadingHeroMobile, setIsUploadingHeroMobile] = useState(false);
+  const [isUploading, setIsUploading] = useState<{ [key: string]: boolean }>({});
   const [mensaje, setMensaje] = useState<{ tipo: 'success' | 'error'; texto: string } | null>(null);
 
   useEffect(() => {
@@ -43,6 +47,18 @@ export default function ConfiguracionPage() {
         if (error) {
           setMensaje({ tipo: 'error', texto: 'Error al cargar la configuración.' });
         } else if (data) {
+          let loadedSlides = data.hero_slides || [];
+          if (loadedSlides.length === 0 && data.hero_imagen_url) {
+            loadedSlides = [{
+              id: crypto.randomUUID(),
+              desktop_url: data.hero_imagen_url,
+              mobile_url: data.hero_imagen_url_mobile || data.hero_imagen_url,
+              pos_y_desktop: data.hero_imagen_posicion_y_desktop ?? 50,
+              pos_y_mobile: data.hero_imagen_posicion_y_mobile ?? 50,
+              pos_x_mobile: data.hero_imagen_posicion_mobile ?? 50,
+            }];
+          }
+
           setConfig({
             envio_gratis_texto: data.envio_gratis_texto || '',
             medios_pago_texto: data.medios_pago_texto || '',
@@ -55,11 +71,7 @@ export default function ConfiguracionPage() {
             hero_titulo: data.hero_titulo || '',
             hero_subtitulo: data.hero_subtitulo || '',
             hero_descripcion: data.hero_descripcion || '',
-            hero_imagen_url: data.hero_imagen_url || '',
-            hero_imagen_url_mobile: data.hero_imagen_url_mobile || '',
-            hero_imagen_posicion_mobile: data.hero_imagen_posicion_mobile ?? 50,
-            hero_imagen_posicion_y_desktop: data.hero_imagen_posicion_y_desktop ?? 50,
-            hero_imagen_posicion_y_mobile: data.hero_imagen_posicion_y_mobile ?? 50
+            hero_slides: loadedSlides
           });
         }
       } catch (err) {
@@ -77,37 +89,51 @@ export default function ConfiguracionPage() {
     setConfig(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleHeroImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      const file = e.target.files[0];
-      setIsUploadingHero(true);
-      setMensaje(null);
-      
-      const res = await subirImagenProducto(file);
-      setIsUploadingHero(false);
-      
-      if (res.error) {
-        setMensaje({ tipo: 'error', texto: res.error });
-      } else if (res.url) {
-        setConfig(prev => ({ ...prev, hero_imagen_url: res.url as string }));
-      }
-    }
+  const handleAddSlide = () => {
+    setConfig(prev => ({
+      ...prev,
+      hero_slides: [
+        ...prev.hero_slides,
+        {
+          id: crypto.randomUUID(),
+          desktop_url: '',
+          mobile_url: '',
+          pos_y_desktop: 50,
+          pos_y_mobile: 50,
+          pos_x_mobile: 50
+        }
+      ]
+    }));
   };
 
-  const handleHeroMobileImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      const file = e.target.files[0];
-      setIsUploadingHeroMobile(true);
-      setMensaje(null);
-      
-      const res = await subirImagenProducto(file);
-      setIsUploadingHeroMobile(false);
-      
-      if (res.error) {
-        setMensaje({ tipo: 'error', texto: res.error });
-      } else if (res.url) {
-        setConfig(prev => ({ ...prev, hero_imagen_url_mobile: res.url as string }));
-      }
+  const handleRemoveSlide = (id: string) => {
+    setConfig(prev => ({
+      ...prev,
+      hero_slides: prev.hero_slides.filter(slide => slide.id !== id)
+    }));
+  };
+
+  const updateSlide = (id: string, field: keyof Slide, value: string | number) => {
+    setConfig(prev => ({
+      ...prev,
+      hero_slides: prev.hero_slides.map(slide => 
+        slide.id === id ? { ...slide, [field]: value } : slide
+      )
+    }));
+  };
+
+  const handleSlideImageUpload = async (id: string, file: File, isMobile: boolean) => {
+    const uploadKey = `${id}-${isMobile ? 'mobile' : 'desktop'}`;
+    setIsUploading(prev => ({ ...prev, [uploadKey]: true }));
+    setMensaje(null);
+    
+    const res = await subirImagenProducto(file);
+    setIsUploading(prev => ({ ...prev, [uploadKey]: false }));
+    
+    if (res.error) {
+      setMensaje({ tipo: 'error', texto: res.error });
+    } else if (res.url) {
+      updateSlide(id, isMobile ? 'mobile_url' : 'desktop_url', res.url);
     }
   };
 
@@ -120,7 +146,15 @@ export default function ConfiguracionPage() {
       const supabase = createClient();
       const { error } = await supabase
         .from('configuracion_sitio')
-        .update(config)
+        .update({
+          ...config,
+          // Mantener legacy fields en sincronía con el primer slide por si acaso.
+          hero_imagen_url: config.hero_slides[0]?.desktop_url || '',
+          hero_imagen_url_mobile: config.hero_slides[0]?.mobile_url || '',
+          hero_imagen_posicion_mobile: config.hero_slides[0]?.pos_x_mobile || 50,
+          hero_imagen_posicion_y_desktop: config.hero_slides[0]?.pos_y_desktop || 50,
+          hero_imagen_posicion_y_mobile: config.hero_slides[0]?.pos_y_mobile || 50
+        })
         .eq('id', 1);
 
       if (error) {
@@ -159,7 +193,6 @@ export default function ConfiguracionPage() {
         {/* Footer y Contacto */}
         <div className="bg-zinc-900 p-6 rounded-2xl border border-zinc-800/50 shadow-lg shadow-black/50">
           <h2 className="text-xl font-semibold mb-6 border-b border-zinc-800/50 pb-3 flex items-center gap-2">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[#F400A1]"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
             Textos Institucionales y Contacto
           </h2>
           
@@ -169,7 +202,6 @@ export default function ConfiguracionPage() {
               <input 
                 type="text" name="envio_gratis_texto" value={config.envio_gratis_texto} onChange={handleChange}
                 className="w-full p-3 bg-zinc-950 border border-zinc-800 rounded-xl focus:ring-1 focus:ring-[#F400A1] focus:border-[#F400A1] outline-none transition-colors"
-                placeholder="Ej: Envío gratis hasta 3km"
               />
             </div>
             <div>
@@ -177,7 +209,6 @@ export default function ConfiguracionPage() {
               <input 
                 type="text" name="medios_pago_texto" value={config.medios_pago_texto} onChange={handleChange}
                 className="w-full p-3 bg-zinc-950 border border-zinc-800 rounded-xl focus:ring-1 focus:ring-[#F400A1] focus:border-[#F400A1] outline-none transition-colors"
-                placeholder="Ej: Efectivo, transferencia..."
               />
             </div>
             <div>
@@ -195,7 +226,7 @@ export default function ConfiguracionPage() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-zinc-400 mb-1.5">Teléfono (WhatsApp, con código)</label>
+              <label className="block text-sm font-medium text-zinc-400 mb-1.5">Teléfono (WhatsApp)</label>
               <input 
                 type="text" name="telefono_whatsapp" value={config.telefono_whatsapp} onChange={handleChange}
                 className="w-full p-3 bg-zinc-950 border border-zinc-800 rounded-xl focus:ring-1 focus:ring-[#F400A1] focus:border-[#F400A1] outline-none transition-colors"
@@ -225,11 +256,10 @@ export default function ConfiguracionPage() {
           </div>
         </div>
 
-        {/* Hero Banner */}
+        {/* Hero Banner General */}
         <div className="bg-zinc-900 p-6 rounded-2xl border border-zinc-800/50 shadow-lg shadow-black/50">
           <h2 className="text-xl font-semibold mb-6 border-b border-zinc-800/50 pb-3 flex items-center gap-2">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[#F400A1]"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-            Banner Principal (Hero)
+            Textos del Carrusel Principal (Hero)
           </h2>
           
           <div className="grid grid-cols-1 gap-5">
@@ -256,177 +286,166 @@ export default function ConfiguracionPage() {
                 className="w-full p-3 bg-zinc-950 border border-zinc-800 rounded-xl focus:ring-1 focus:ring-[#F400A1] focus:border-[#F400A1] outline-none transition-colors resize-none"
               />
             </div>
-            {/* File Input RF-09 PATTERN */}
-            <div className={`p-4 border rounded-xl transition-all ${
-              isUploadingHero ? 'bg-zinc-800/30 border-[#F400A1]/50 animate-pulse' : 'bg-zinc-950 border-zinc-800'
-            }`}>
-              <label className="block text-sm font-medium text-zinc-400 mb-2 flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
-                {isUploadingHero ? 'Procesando Medios (CDN)...' : 'Subir Nueva Imagen de Fondo Desktop (Max 5MB)'}
-              </label>
-              <input 
-                type="file" 
-                accept="image/*"
-                onChange={handleHeroImageChange}
-                disabled={isLoading || isUploadingHero}
-                className="w-full text-sm text-zinc-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-zinc-800 file:text-zinc-300 hover:file:bg-zinc-700 transition-all disabled:opacity-50 cursor-pointer"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-zinc-400 mb-1.5">URL de la Imagen de Fondo Desktop (Fallback manual)</label>
-              <input 
-                type="text" name="hero_imagen_url" value={config.hero_imagen_url} onChange={handleChange}
-                className="w-full p-3 bg-zinc-950 border border-zinc-800 rounded-xl focus:ring-1 focus:ring-[#F400A1] focus:border-[#F400A1] outline-none transition-colors"
-                placeholder="https://..."
-              />
-            </div>
-
-            <div className={`p-4 border rounded-xl transition-all mt-4 ${
-              isUploadingHeroMobile ? 'bg-zinc-800/30 border-[#F400A1]/50 animate-pulse' : 'bg-zinc-950 border-zinc-800'
-            }`}>
-              <label className="block text-sm font-medium text-zinc-400 mb-2 flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" x2="12.01" y1="18" y2="18"/></svg>
-                {isUploadingHeroMobile ? 'Procesando Medios (CDN)...' : 'Subir Nueva Imagen de Fondo Mobile (Max 5MB)'}
-              </label>
-              <input 
-                type="file" 
-                accept="image/*"
-                onChange={handleHeroMobileImageChange}
-                disabled={isLoading || isUploadingHeroMobile}
-                className="w-full text-sm text-zinc-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-zinc-800 file:text-zinc-300 hover:file:bg-zinc-700 transition-all disabled:opacity-50 cursor-pointer"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-zinc-400 mb-1.5">URL de la Imagen de Fondo Mobile (Fallback manual)</label>
-              <input 
-                type="text" name="hero_imagen_url_mobile" value={config.hero_imagen_url_mobile} onChange={handleChange}
-                className="w-full p-3 bg-zinc-950 border border-zinc-800 rounded-xl focus:ring-1 focus:ring-[#F400A1] focus:border-[#F400A1] outline-none transition-colors"
-                placeholder="https://..."
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-zinc-400 mb-1.5 flex justify-between">
-                <span>Posición Horizontal Mobile (X-Axis)</span>
-                <span className="text-[#F400A1] font-bold">{config.hero_imagen_posicion_mobile}%</span>
-              </label>
-              <input 
-                type="range" name="hero_imagen_posicion_mobile" min="0" max="100" 
-                value={config.hero_imagen_posicion_mobile} 
-                onChange={(e) => setConfig(prev => ({ ...prev, hero_imagen_posicion_mobile: Number(e.target.value) }))}
-                className="w-full accent-[#F400A1] h-2 bg-zinc-800 rounded-lg appearance-none cursor-pointer"
-              />
-              <div className="flex justify-between text-[10px] text-zinc-500 mt-1 uppercase font-bold tracking-wider">
-                <span>Izquierda (0%)</span>
-                <span>Centro (50%)</span>
-                <span>Derecha (100%)</span>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-zinc-400 mb-1.5 flex justify-between">
-                <span>Posición Vertical Desktop (Y-Axis)</span>
-                <span className="text-[#F400A1] font-bold">{config.hero_imagen_posicion_y_desktop}%</span>
-              </label>
-              <input 
-                type="range" name="hero_imagen_posicion_y_desktop" min="0" max="100" 
-                value={config.hero_imagen_posicion_y_desktop} 
-                onChange={(e) => setConfig(prev => ({ ...prev, hero_imagen_posicion_y_desktop: Number(e.target.value) }))}
-                className="w-full accent-[#F400A1] h-2 bg-zinc-800 rounded-lg appearance-none cursor-pointer"
-              />
-              <div className="flex justify-between text-[10px] text-zinc-500 mt-1 uppercase font-bold tracking-wider">
-                <span>Arriba (0%)</span>
-                <span>Centro (50%)</span>
-                <span>Abajo (100%)</span>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-zinc-400 mb-1.5 flex justify-between">
-                <span>Posición Vertical Mobile (Y-Axis)</span>
-                <span className="text-[#F400A1] font-bold">{config.hero_imagen_posicion_y_mobile}%</span>
-              </label>
-              <input 
-                type="range" name="hero_imagen_posicion_y_mobile" min="0" max="100" 
-                value={config.hero_imagen_posicion_y_mobile} 
-                onChange={(e) => setConfig(prev => ({ ...prev, hero_imagen_posicion_y_mobile: Number(e.target.value) }))}
-                className="w-full accent-[#F400A1] h-2 bg-zinc-800 rounded-lg appearance-none cursor-pointer"
-              />
-              <div className="flex justify-between text-[10px] text-zinc-500 mt-1 uppercase font-bold tracking-wider">
-                <span>Arriba (0%)</span>
-                <span>Centro (50%)</span>
-                <span>Abajo (100%)</span>
-              </div>
-            </div>
-
-            {/* PREVIEW SECTIONS */}
-            <div className="mt-6 border-t border-zinc-800/50 pt-6">
-              <h3 className="text-sm font-semibold text-zinc-400 mb-4 flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
-                Vista Previa en Vivo
-              </h3>
-              
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-                {/* Desktop Preview */}
-                <div>
-                  <div className="text-xs text-zinc-500 mb-2 uppercase tracking-wider font-bold">Vista Desktop (16:9)</div>
-                  <div 
-                    className="relative w-full aspect-video rounded-xl overflow-hidden bg-zinc-950 border border-zinc-800 flex flex-col justify-end"
-                    style={{ 
-                      backgroundImage: `url(${config.hero_imagen_url || 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?q=80&w=2070&auto=format&fit=crop'})`,
-                      backgroundSize: 'cover',
-                      backgroundPosition: `center ${config.hero_imagen_posicion_y_desktop}%`
-                    }}
-                  >
-                    <div className="absolute inset-0 bg-gradient-to-t from-[#0F0F12]/90 via-[#0F0F12]/60 to-transparent pointer-events-none" />
-                    <div className="relative z-10 p-4 sm:p-6 text-left">
-                      <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full bg-white/5 border border-white/10 text-[#F400A1] text-[8px] sm:text-[10px] font-bold tracking-widest uppercase mb-3 backdrop-blur-md">
-                        <span className="w-1.5 h-1.5 rounded-full bg-[#F400A1] animate-pulse" />
-                        {config.hero_subtitulo || 'Nueva Colección'}
-                      </div>
-                      <h4 className="text-xl sm:text-3xl font-black font-display text-white uppercase tracking-[0.1em] mb-2 leading-tight truncate">
-                        {config.hero_titulo || 'Rendimiento en cada movimiento'}
-                      </h4>
-                      <p className="text-xs sm:text-sm text-gray-400 font-light leading-relaxed line-clamp-2">
-                        {config.hero_descripcion || 'Indumentaria de barrio diseñada para entrenar sin límites.'}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Mobile Preview */}
-                <div>
-                  <div className="text-xs text-zinc-500 mb-2 uppercase tracking-wider font-bold">Vista Mobile (9:16)</div>
-                  <div className="flex justify-center">
-                    <div 
-                      className="relative w-[220px] sm:w-[280px] aspect-[9/16] rounded-[2rem] overflow-hidden bg-zinc-950 border-[6px] border-zinc-800 flex flex-col justify-end shadow-2xl"
-                      style={{ 
-                        backgroundImage: `url(${config.hero_imagen_url_mobile || config.hero_imagen_url || 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?q=80&w=2070&auto=format&fit=crop'})`,
-                        backgroundSize: 'cover',
-                        backgroundPosition: `${config.hero_imagen_posicion_mobile}% ${config.hero_imagen_posicion_y_mobile}%`
-                      }}
-                    >
-                      <div className="absolute inset-0 bg-gradient-to-t from-[#0F0F12] via-[#0F0F12]/70 to-transparent pointer-events-none" />
-                      <div className="relative z-10 p-5 text-left pb-8">
-                        <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full bg-white/5 border border-white/10 text-[#F400A1] text-[8px] font-bold tracking-widest uppercase mb-3 backdrop-blur-md">
-                          <span className="w-1.5 h-1.5 rounded-full bg-[#F400A1] animate-pulse" />
-                          {config.hero_subtitulo || 'Nueva Colección'}
-                        </div>
-                        <h4 className="text-2xl font-black font-display text-white uppercase tracking-[0.1em] mb-3 leading-tight break-words">
-                          {config.hero_titulo || 'Rendimiento en cada movimiento'}
-                        </h4>
-                        <p className="text-xs text-gray-400 font-light leading-relaxed line-clamp-3">
-                          {config.hero_descripcion || 'Indumentaria de barrio diseñada para entrenar sin límites.'}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
           </div>
+        </div>
+
+        {/* Carrusel Slides */}
+        <div className="bg-zinc-900 p-6 rounded-2xl border border-zinc-800/50 shadow-lg shadow-black/50">
+          <div className="flex items-center justify-between border-b border-zinc-800/50 pb-3 mb-6">
+            <h2 className="text-xl font-semibold flex items-center gap-2">
+              Imágenes del Carrusel
+            </h2>
+            <button 
+              type="button" 
+              onClick={handleAddSlide}
+              className="text-sm bg-[#F400A1] text-white px-4 py-2 rounded-lg font-bold hover:bg-[#D000A0] transition-colors"
+            >
+              + Agregar Slide
+            </button>
+          </div>
+
+          {config.hero_slides.length === 0 ? (
+            <p className="text-zinc-500 text-sm italic">No hay imágenes en el carrusel. Agregá una para empezar.</p>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              {config.hero_slides.map((slide, index) => (
+                <div key={slide.id} className="bg-zinc-950 p-5 rounded-xl border border-zinc-800 relative shadow-md">
+                  <div className="flex justify-between items-center mb-4 border-b border-zinc-800 pb-2">
+                    <span className="font-bold text-[#F400A1]">Slide {index + 1}</span>
+                    <button 
+                      type="button"
+                      onClick={() => handleRemoveSlide(slide.id)}
+                      className="text-red-500 hover:text-red-400 text-sm font-bold bg-red-500/10 px-2 py-1 rounded"
+                    >
+                      Eliminar
+                    </button>
+                  </div>
+
+                  <div className="space-y-6">
+                    {/* Desktop Upload & View */}
+                    <div>
+                      <label className="block text-sm font-medium text-zinc-400 mb-2">Imagen Desktop</label>
+                      {slide.desktop_url ? (
+                        <div className="mb-3 relative w-full aspect-video rounded-lg overflow-hidden border border-zinc-800 flex flex-col justify-end" style={{ backgroundImage: `url(${slide.desktop_url})`, backgroundSize: 'cover', backgroundPosition: `center ${slide.pos_y_desktop}%` }}>
+                          <div className="absolute inset-0 bg-gradient-to-t from-[#0F0F12]/90 via-[#0F0F12]/60 to-transparent pointer-events-none" />
+                          <div className="relative z-10 p-4 sm:p-6 text-left">
+                            <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full bg-white/5 border border-white/10 text-[#F400A1] text-[8px] sm:text-[10px] font-bold tracking-widest uppercase mb-3 backdrop-blur-md">
+                              <span className="w-1.5 h-1.5 rounded-full bg-[#F400A1] animate-pulse" />
+                              {config.hero_subtitulo || 'Nueva Colección'}
+                            </div>
+                            <h4 className="text-xl sm:text-2xl font-black font-display text-white uppercase tracking-[0.1em] mb-2 leading-tight truncate">
+                              {config.hero_titulo || 'Rendimiento en cada movimiento'}
+                            </h4>
+                            <p className="text-xs text-gray-400 font-light leading-relaxed line-clamp-2">
+                              {config.hero_descripcion || 'Indumentaria de barrio diseñada para entrenar sin límites.'}
+                            </p>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="mb-3 w-full aspect-video rounded-lg bg-zinc-900 border border-dashed border-zinc-700 flex items-center justify-center text-zinc-600 text-xs">
+                          Sin imagen desktop
+                        </div>
+                      )}
+                      
+                      <input 
+                        type="file" accept="image/*"
+                        onChange={(e) => {
+                          if (e.target.files && e.target.files.length > 0) {
+                            handleSlideImageUpload(slide.id, e.target.files[0], false);
+                          }
+                        }}
+                        disabled={isLoading || isUploading[`${slide.id}-desktop`]}
+                        className="w-full text-xs text-zinc-400 file:mr-4 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-zinc-800 file:text-zinc-300 hover:file:bg-zinc-700 cursor-pointer mb-2"
+                      />
+                      <input 
+                        type="text" value={slide.desktop_url} onChange={(e) => updateSlide(slide.id, 'desktop_url', e.target.value)}
+                        placeholder="URL Desktop (Fallback)"
+                        className="w-full p-2 text-xs bg-zinc-900 border border-zinc-800 rounded-md focus:ring-1 focus:ring-[#F400A1] outline-none"
+                      />
+                      <div className="mt-2">
+                        <label className="flex justify-between text-xs text-zinc-500 mb-1">
+                          <span>Ajuste Y (Vertical):</span>
+                          <span>{slide.pos_y_desktop}%</span>
+                        </label>
+                        <input 
+                          type="range" min="0" max="100" value={slide.pos_y_desktop}
+                          onChange={(e) => updateSlide(slide.id, 'pos_y_desktop', Number(e.target.value))}
+                          className="w-full h-1 accent-[#F400A1] bg-zinc-800 rounded-lg cursor-pointer"
+                        />
+                      </div>
+                    </div>
+
+                    <hr className="border-zinc-800" />
+
+                    {/* Mobile Upload & View */}
+                    <div>
+                      <label className="block text-sm font-medium text-zinc-400 mb-2">Imagen Mobile</label>
+                      {slide.mobile_url ? (
+                        <div className="mb-3 relative w-[220px] sm:w-[280px] mx-auto aspect-[9/16] rounded-[2rem] overflow-hidden border-[6px] border-zinc-800 flex flex-col justify-end shadow-2xl" style={{ backgroundImage: `url(${slide.mobile_url})`, backgroundSize: 'cover', backgroundPosition: `${slide.pos_x_mobile}% ${slide.pos_y_mobile}%` }}>
+                          <div className="absolute inset-0 bg-gradient-to-t from-[#0F0F12] via-[#0F0F12]/70 to-transparent pointer-events-none" />
+                          <div className="relative z-10 p-5 text-left pb-8">
+                            <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full bg-white/5 border border-white/10 text-[#F400A1] text-[8px] font-bold tracking-widest uppercase mb-3 backdrop-blur-md">
+                              <span className="w-1.5 h-1.5 rounded-full bg-[#F400A1] animate-pulse" />
+                              {config.hero_subtitulo || 'Nueva Colección'}
+                            </div>
+                            <h4 className="text-2xl font-black font-display text-white uppercase tracking-[0.1em] mb-3 leading-tight break-words">
+                              {config.hero_titulo || 'Rendimiento en cada movimiento'}
+                            </h4>
+                            <p className="text-xs text-gray-400 font-light leading-relaxed line-clamp-3">
+                              {config.hero_descripcion || 'Indumentaria de barrio diseñada para entrenar sin límites.'}
+                            </p>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="mb-3 w-32 mx-auto aspect-[9/16] rounded-lg bg-zinc-900 border border-dashed border-zinc-700 flex items-center justify-center text-zinc-600 text-xs text-center p-2">
+                          Sin imagen mobile
+                        </div>
+                      )}
+
+                      <input 
+                        type="file" accept="image/*"
+                        onChange={(e) => {
+                          if (e.target.files && e.target.files.length > 0) {
+                            handleSlideImageUpload(slide.id, e.target.files[0], true);
+                          }
+                        }}
+                        disabled={isLoading || isUploading[`${slide.id}-mobile`]}
+                        className="w-full text-xs text-zinc-400 file:mr-4 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-zinc-800 file:text-zinc-300 hover:file:bg-zinc-700 cursor-pointer mb-2"
+                      />
+                      <input 
+                        type="text" value={slide.mobile_url} onChange={(e) => updateSlide(slide.id, 'mobile_url', e.target.value)}
+                        placeholder="URL Mobile (Fallback)"
+                        className="w-full p-2 text-xs bg-zinc-900 border border-zinc-800 rounded-md focus:ring-1 focus:ring-[#F400A1] outline-none"
+                      />
+                      
+                      <div className="mt-2">
+                        <label className="flex justify-between text-xs text-zinc-500 mb-1">
+                          <span>Ajuste X (Horizontal):</span>
+                          <span>{slide.pos_x_mobile}%</span>
+                        </label>
+                        <input 
+                          type="range" min="0" max="100" value={slide.pos_x_mobile}
+                          onChange={(e) => updateSlide(slide.id, 'pos_x_mobile', Number(e.target.value))}
+                          className="w-full h-1 accent-[#F400A1] bg-zinc-800 rounded-lg cursor-pointer"
+                        />
+                      </div>
+                      <div className="mt-2">
+                        <label className="flex justify-between text-xs text-zinc-500 mb-1">
+                          <span>Ajuste Y (Vertical):</span>
+                          <span>{slide.pos_y_mobile}%</span>
+                        </label>
+                        <input 
+                          type="range" min="0" max="100" value={slide.pos_y_mobile}
+                          onChange={(e) => updateSlide(slide.id, 'pos_y_mobile', Number(e.target.value))}
+                          className="w-full h-1 accent-[#F400A1] bg-zinc-800 rounded-lg cursor-pointer"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Accionador */}
@@ -440,12 +459,7 @@ export default function ConfiguracionPage() {
                 : 'bg-[#F400A1] hover:bg-[#D000A0] shadow-lg shadow-[#F400A1]/20'
             }`}
           >
-            {isLoading ? (
-              <>
-                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-zinc-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                Guardando...
-              </>
-            ) : 'Guardar Configuración'}
+            {isLoading ? 'Guardando...' : 'Guardar Configuración'}
           </button>
         </div>
       </form>

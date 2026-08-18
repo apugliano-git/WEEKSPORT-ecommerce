@@ -47,7 +47,8 @@ CREATE TABLE public.configuracion_sitio (
     hero_imagen_url_mobile text,
     hero_imagen_posicion_mobile integer DEFAULT 50,
     hero_imagen_posicion_y_desktop integer DEFAULT 50,
-    hero_imagen_posicion_y_mobile integer DEFAULT 50
+    hero_imagen_posicion_y_mobile integer DEFAULT 50,
+    hero_slides jsonb DEFAULT '[]'::jsonb
 );
 
 CREATE TABLE public.productos (

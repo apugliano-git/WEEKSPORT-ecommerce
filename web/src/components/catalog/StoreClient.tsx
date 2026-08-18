@@ -11,7 +11,7 @@ import { useSearchParams } from 'next/navigation'
 interface StoreClientProps {
   productos: Producto[]
   categorias: { id: string; name: string }[]
-  config?: any
+  config?: Record<string, any>
 }
 
 export function StoreClient({ productos, categorias, config }: StoreClientProps) {
@@ -30,6 +30,7 @@ export function StoreClient({ productos, categorias, config }: StoreClientProps)
         heroImagenPosicionMobile={config?.hero_imagen_posicion_mobile}
         heroImagenPosicionYDesktop={config?.hero_imagen_posicion_y_desktop}
         heroImagenPosicionYMobile={config?.hero_imagen_posicion_y_mobile}
+        heroSlides={config?.hero_slides}
       />
       
       <section className="max-w-7xl w-full mx-auto self-center px-4 sm:px-6 lg:px-8 py-20 md:py-24 bg-[#0F0F12]">
