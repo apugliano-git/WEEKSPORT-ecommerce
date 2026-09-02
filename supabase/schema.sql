@@ -532,6 +532,29 @@ CREATE POLICY ventas_admin_insert ON public.ventas_historico FOR INSERT TO authe
 
 -- No write policies for talles_por_tipo: size definitions are managed by SQL migrations.
 
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES (
+    'productos-imagenes',
+    'productos-imagenes',
+    true,
+    5242880,
+    ARRAY['image/jpeg', 'image/png', 'image/webp', 'image/avif']::text[]
+)
+ON CONFLICT (id) DO UPDATE SET
+    public = EXCLUDED.public,
+    file_size_limit = EXCLUDED.file_size_limit,
+    allowed_mime_types = EXCLUDED.allowed_mime_types;
+
+CREATE POLICY productos_imagenes_public_read ON storage.objects FOR SELECT TO anon, authenticated
+    USING (bucket_id = 'productos-imagenes');
+CREATE POLICY productos_imagenes_admin_insert ON storage.objects FOR INSERT TO authenticated
+    WITH CHECK (bucket_id = 'productos-imagenes' AND (SELECT public.is_admin()));
+CREATE POLICY productos_imagenes_admin_update ON storage.objects FOR UPDATE TO authenticated
+    USING (bucket_id = 'productos-imagenes' AND (SELECT public.is_admin()))
+    WITH CHECK (bucket_id = 'productos-imagenes' AND (SELECT public.is_admin()));
+CREATE POLICY productos_imagenes_admin_delete ON storage.objects FOR DELETE TO authenticated
+    USING (bucket_id = 'productos-imagenes' AND (SELECT public.is_admin()));
+
 REVOKE ALL ON FUNCTION public.is_admin() FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.is_admin() TO anon, authenticated;
 

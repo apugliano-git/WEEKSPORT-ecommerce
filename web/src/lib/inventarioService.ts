@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/client';
 import { parseProductCreationRpcResponse } from './security/inventoryRpc';
+import { validateImageUpload } from './security/uploads';
 
 const supabase = createClient();
 export interface ApiResponse {
@@ -113,23 +114,23 @@ export async function desactivarProducto(productoId: string): Promise<ApiRespons
  */
 export async function subirImagenProducto(file: File): Promise<{ url?: string; error?: string }> {
   try {
-    // Validación perimetral 5MB
-    if (file.size > 5 * 1024 * 1024) {
-      return { error: 'El archivo excede el límite de 5 MB permitidos.' };
+    const validation = validateImageUpload(file);
+    if (!validation.ok) {
+      return { error: validation.error };
     }
 
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${crypto.randomUUID()}-${Date.now()}.${fileExt}`;
+    const fileName = `${crypto.randomUUID()}.${validation.extension}`;
 
     const { error: uploadError } = await supabase.storage
       .from('productos-imagenes')
       .upload(fileName, file, {
         cacheControl: '3600',
-        upsert: false
+        contentType: file.type,
+        upsert: false,
       });
 
     if (uploadError) {
-      return { error: `Fallo al subir la imagen: ${uploadError.message}` };
+      return { error: 'No se pudo subir la imagen.' };
     }
 
     const { data } = supabase.storage

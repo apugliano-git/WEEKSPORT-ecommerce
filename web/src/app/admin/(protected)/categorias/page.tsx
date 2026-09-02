@@ -1,44 +1,67 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { subirImagenProducto } from '@/lib/inventarioService';
 
+type CategoriaConImagen = {
+  id: string;
+  nombre: string;
+  slug: string;
+  created_at: string;
+  imagen_url?: string | null;
+};
+
 export default function CategoriasPage() {
-  const [categorias, setCategorias] = useState<any[]>([]);
+  const [categorias, setCategorias] = useState<CategoriaConImagen[]>([]);
   const [isFetching, setIsFetching] = useState(true);
   const [uploadingId, setUploadingId] = useState<string | null>(null);
   const [mensaje, setMensaje] = useState<{ tipo: 'success' | 'error'; texto: string } | null>(null);
   
   const [selectedFiles, setSelectedFiles] = useState<Record<string, File>>({});
   const [previewUrls, setPreviewUrls] = useState<Record<string, string>>({});
+  const previewUrlsRef = useRef<Record<string, string>>({});
 
   useEffect(() => {
-    fetchCategorias();
+    previewUrlsRef.current = previewUrls;
+  }, [previewUrls]);
+
+  useEffect(() => {
+    return () => Object.values(previewUrlsRef.current).forEach(url => URL.revokeObjectURL(url));
   }, []);
 
-  const fetchCategorias = async () => {
-    try {
-      const supabase = createClient();
-      const { data, error } = await supabase
-        .from('categorias')
-        .select('*')
-        .order('nombre');
-        
-      if (error) {
-        setMensaje({ tipo: 'error', texto: 'Error al cargar categorías.' });
-      } else if (data) {
-        setCategorias(data);
+  useEffect(() => {
+    let cancelled = false;
+    const loadCategorias = async () => {
+      try {
+        const supabase = createClient();
+        const { data, error } = await supabase
+          .from('categorias')
+          .select('*')
+          .order('nombre');
+
+        if (cancelled) return;
+        if (error) {
+          setMensaje({ tipo: 'error', texto: 'Error al cargar categorías.' });
+        } else if (data) {
+          setCategorias(data);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          console.error(error);
+          setMensaje({ tipo: 'error', texto: 'Error de conexión al cargar categorías.' });
+        }
+      } finally {
+        if (!cancelled) setIsFetching(false);
       }
-    } catch (err) {
-      console.error(err);
-      setMensaje({ tipo: 'error', texto: 'Error de conexión al cargar categorías.' });
-    } finally {
-      setIsFetching(false);
-    }
-  };
+    };
+    void loadCategorias();
+    return () => { cancelled = true; };
+  }, []);
 
   const handleFileSelect = (categoryId: string, file: File) => {
+    const previousUrl = previewUrlsRef.current[categoryId];
+    if (previousUrl) URL.revokeObjectURL(previousUrl);
     setSelectedFiles(prev => ({ ...prev, [categoryId]: file }));
     setPreviewUrls(prev => ({ ...prev, [categoryId]: URL.createObjectURL(file) }));
     setMensaje(null);
@@ -71,6 +94,8 @@ export default function CategoriasPage() {
       setMensaje({ tipo: 'error', texto: 'Error al guardar la URL en la base de datos: ' + error.message });
     } else {
       setMensaje({ tipo: 'success', texto: 'Imagen de categoría actualizada correctamente.' });
+      const previewUrl = previewUrlsRef.current[categoryId];
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
       // Actualizar el estado local
       setCategorias(prev => prev.map(c => c.id === categoryId ? { ...c, imagen_url: res.url } : c));
       

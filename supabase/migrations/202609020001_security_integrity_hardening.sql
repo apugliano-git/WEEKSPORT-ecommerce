@@ -167,6 +167,60 @@ CREATE POLICY ventas_admin_insert
 ON public.ventas_historico FOR INSERT TO authenticated
 WITH CHECK ((SELECT public.is_admin()));
 
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES (
+    'productos-imagenes',
+    'productos-imagenes',
+    true,
+    5242880,
+    ARRAY['image/jpeg', 'image/png', 'image/webp', 'image/avif']::text[]
+)
+ON CONFLICT (id) DO UPDATE SET
+    public = EXCLUDED.public,
+    file_size_limit = EXCLUDED.file_size_limit,
+    allowed_mime_types = EXCLUDED.allowed_mime_types;
+
+DO $$
+DECLARE
+    policy_row record;
+BEGIN
+    FOR policy_row IN
+        SELECT policyname
+        FROM pg_policies
+        WHERE schemaname = 'storage'
+          AND tablename = 'objects'
+          AND (
+              coalesce(qual::text, '') ILIKE '%productos-imagenes%'
+              OR coalesce(with_check::text, '') ILIKE '%productos-imagenes%'
+          )
+    LOOP
+        EXECUTE format('DROP POLICY IF EXISTS %I ON storage.objects', policy_row.policyname);
+    END LOOP;
+END
+$$;
+
+DROP POLICY IF EXISTS productos_imagenes_public_read ON storage.objects;
+DROP POLICY IF EXISTS productos_imagenes_admin_insert ON storage.objects;
+DROP POLICY IF EXISTS productos_imagenes_admin_update ON storage.objects;
+DROP POLICY IF EXISTS productos_imagenes_admin_delete ON storage.objects;
+
+CREATE POLICY productos_imagenes_public_read
+ON storage.objects FOR SELECT TO anon, authenticated
+USING (bucket_id = 'productos-imagenes');
+
+CREATE POLICY productos_imagenes_admin_insert
+ON storage.objects FOR INSERT TO authenticated
+WITH CHECK (bucket_id = 'productos-imagenes' AND (SELECT public.is_admin()));
+
+CREATE POLICY productos_imagenes_admin_update
+ON storage.objects FOR UPDATE TO authenticated
+USING (bucket_id = 'productos-imagenes' AND (SELECT public.is_admin()))
+WITH CHECK (bucket_id = 'productos-imagenes' AND (SELECT public.is_admin()));
+
+CREATE POLICY productos_imagenes_admin_delete
+ON storage.objects FOR DELETE TO authenticated
+USING (bucket_id = 'productos-imagenes' AND (SELECT public.is_admin()));
+
 DROP FUNCTION IF EXISTS public.crear_producto_con_variantes(varchar, text, uuid, varchar, varchar, numeric, text[], text[]);
 
 CREATE OR REPLACE FUNCTION public.crear_producto_con_variantes(
