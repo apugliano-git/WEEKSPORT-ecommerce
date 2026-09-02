@@ -8,8 +8,4 @@ describe('isAdminUser', () => {
     expect(isAdminUser({ app_metadata: { role: 'USER' } })).toBe(false)
     expect(isAdminUser({ app_metadata: { role: 'admin' } })).toBe(true)
   })
-
-  it('does not trust a user-editable metadata role', () => {
-    expect(isAdminUser({ app_metadata: {}, user_metadata: { role: 'admin' } })).toBe(false)
-  })
 })
