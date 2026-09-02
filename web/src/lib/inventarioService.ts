@@ -8,13 +8,6 @@ export interface ApiResponse {
   message: string;
 }
 
-export interface NuevaVariante {
-  talle: string;
-  color: string;
-  cantidad: number;
-  precio: number;
-}
-
 export interface NuevoArticuloPayload {
   nombre: string;
   descripcion: string;
