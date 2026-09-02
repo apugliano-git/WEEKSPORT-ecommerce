@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/client';
+import { parseProductCreationRpcResponse } from './security/inventoryRpc';
 
 const supabase = createClient();
 export interface ApiResponse {
@@ -44,7 +45,7 @@ export async function actualizarStockVariante(id: string, nuevoStock: number): P
     }
 
     return { status: 'success', message: 'Stock actualizado con éxito.' };
-  } catch (err: any) {
+  } catch {
     return { status: 'error', message: 'Fallo de red o excepción interna.' };
   }
 }
@@ -63,20 +64,21 @@ export async function crearArticuloCompleto(payload: NuevoArticuloPayload): Prom
       p_precio_inicial: payload.precio_inicial,
       p_imagenes: payload.imagenes || [],
       p_colores: payload.colores || [],
-      p_cantidades: payload.cantidades || {}
+      p_cantidades: payload.cantidades ?? {}
     });
 
     if (error) {
       return { status: 'error', message: `Fallo al registrar el artículo: ${error.message}` };
     }
 
-    if (data && (data as any).status === 'error') {
-      return { status: 'error', message: `Error en la base de datos: ${(data as any).message}` };
+    const rpcResult = parseProductCreationRpcResponse(data);
+    if (rpcResult.status === 'error') {
+      return { status: 'error', message: `Error en la base de datos: ${rpcResult.message}` };
     }
 
     return { status: 'success', message: 'Artículo completo y stock inicial registrados exitosamente en el sistema.' };
-  } catch (err: any) {
-    return { status: 'error', message: err.message || 'Error desconocido' };
+  } catch {
+    return { status: 'error', message: 'Error desconocido' };
   }
 }
 
@@ -100,7 +102,7 @@ export async function desactivarProducto(productoId: string): Promise<ApiRespons
     }
 
     return { status: 'success', message: 'Producto dado de baja lógica correctamente.' };
-  } catch (err: any) {
+  } catch {
     return { status: 'error', message: 'Error interno al intentar dar de baja el artículo.' };
   }
 }
@@ -135,7 +137,7 @@ export async function subirImagenProducto(file: File): Promise<{ url?: string; e
       .getPublicUrl(fileName);
 
     return { url: data.publicUrl };
-  } catch (err: any) {
+  } catch {
     return { error: 'Excepción interna al procesar la subida de medios.' };
   }
 }
@@ -166,7 +168,7 @@ export async function agregarColorAProducto(
     }
 
     return { status: 'success', message: 'Color agregado con éxito.' };
-  } catch (err: any) {
+  } catch {
     return { status: 'error', message: 'Fallo de red o excepción interna al agregar color.' };
   }
 }
@@ -192,7 +194,7 @@ export async function actualizarPrecioColor(
     }
 
     return { status: 'success', message: 'Precio actualizado con éxito.' };
-  } catch (err: any) {
+  } catch {
     return { status: 'error', message: 'Fallo de red o excepción interna al actualizar precio.' };
   }
 }
