@@ -74,7 +74,7 @@ export default function CategoriasPage() {
     setUploadingId(categoryId);
     setMensaje(null);
     
-    // Subir la imagen usando el servicio existente (que la sube al bucket 'productos')
+    // Subir la imagen usando el servicio existente (que la sube al bucket 'productos-imagenes')
     const res = await subirImagenProducto(file);
     
     if (res.error || !res.url) {
