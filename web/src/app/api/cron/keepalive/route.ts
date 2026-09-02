@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { isCronRequestAuthorized } from '@/lib/security/cron';
 
 export async function GET(request: Request) {
   // Validar si la request viene realmente de Vercel Cron
@@ -8,7 +9,7 @@ export async function GET(request: Request) {
   // si el entorno tiene definida la variable CRON_SECRET.
   const authHeader = request.headers.get('authorization');
   
-  if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!isCronRequestAuthorized(authHeader, process.env.CRON_SECRET)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -29,8 +30,8 @@ export async function GET(request: Request) {
       timestamp: new Date().toISOString(),
       rowsCount: count
     });
-  } catch (error: any) {
-    console.error('Error in keepalive cron:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch {
+    console.error('keepalive_cron_failed');
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
