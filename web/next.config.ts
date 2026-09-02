@@ -16,6 +16,11 @@ const contentSecurityPolicy = [
 ].join('; ');
 
 const nextConfig: NextConfig = {
+  experimental: {
+    useTypeScriptCli: false,
+    workerThreads: true,
+    webpackBuildWorker: false,
+  },
   async headers() {
     return [
       {

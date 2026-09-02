@@ -21,12 +21,16 @@ interface CartContextType {
 const CartContext = createContext<CartContextType | undefined>(undefined)
 
 export function CartProvider({ children }: { children: ReactNode }) {
-  const [cart, setCart] = useState<CartItem[]>(() => {
-    if (typeof window === 'undefined') return []
-    return parseStoredCart(window.localStorage.getItem('weeksport_cart'))
-  })
-  const [isLoaded] = useState(() => typeof window !== 'undefined')
+  const [cart, setCart] = useState<CartItem[]>([])
+  const [isLoaded, setIsLoaded] = useState(false)
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
+
+  useEffect(() => {
+    // localStorage is unavailable during SSR, so hydration must happen after mount.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setCart(parseStoredCart(window.localStorage.getItem('weeksport_cart')))
+    setIsLoaded(true)
+  }, [])
 
   // Guardar en localStorage cada vez que el carrito cambia
   useEffect(() => {

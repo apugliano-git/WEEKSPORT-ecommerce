@@ -4,14 +4,14 @@ import React, { useState } from 'react'
 import { useCart } from '@/context/CartContext'
 import { procesarCheckoutWhatsApp } from '@/utils/whatsapp'
 
-export function CartDrawer() {
+export function CartDrawer({ telefonoWhatsapp }: { telefonoWhatsapp: string }) {
   const { cart, isDrawerOpen, closeDrawer, removeItem, updateQuantity, totalPrice } = useCart()
   const [nombre, setNombre] = useState('')
 
   const handleCheckout = (e: React.FormEvent) => {
     e.preventDefault()
     if (!nombre.trim()) return
-    procesarCheckoutWhatsApp(nombre, cart)
+    procesarCheckoutWhatsApp(nombre, cart, telefonoWhatsapp)
   }
 
   return (
@@ -29,7 +29,7 @@ export function CartDrawer() {
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-white/10">
           <h2 className="text-xl font-bold font-display text-white">Tu Carrito</h2>
-          <button onClick={closeDrawer} className="p-2 text-gray-400 hover:text-white transition-colors">
+          <button aria-label="Cerrar carrito" onClick={closeDrawer} className="p-2 text-gray-400 hover:text-white transition-colors">
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M18 6 6 18"/><path d="m6 6 12 12"/>
             </svg>
@@ -72,6 +72,7 @@ export function CartDrawer() {
                   <div className="flex items-center justify-between mt-2">
                     <div className="flex items-center gap-3 bg-[#1A1A20] rounded-lg px-2 py-1 border border-white/10">
                       <button 
+                        aria-label={`Reducir cantidad de ${item.producto.nombre}`}
                         onClick={() => updateQuantity(item.variante_id, item.cantidad - 1)}
                         className="text-gray-400 hover:text-white transition-colors disabled:opacity-50"
                         disabled={item.cantidad <= 1}
@@ -80,6 +81,7 @@ export function CartDrawer() {
                       </button>
                       <span className="text-sm font-medium w-4 text-center text-white">{item.cantidad}</span>
                       <button 
+                        aria-label={`Aumentar cantidad de ${item.producto.nombre}`}
                         onClick={() => updateQuantity(item.variante_id, item.cantidad + 1)}
                         className="text-gray-400 hover:text-white transition-colors disabled:opacity-50"
                         disabled={item.cantidad >= item.variante.cantidad}
@@ -89,6 +91,7 @@ export function CartDrawer() {
                     </div>
                     
                     <button 
+                      aria-label={`Eliminar ${item.producto.nombre} del carrito`}
                       onClick={() => removeItem(item.variante_id)}
                       className="text-red-500 hover:text-red-400 p-1 transition-colors"
                     >

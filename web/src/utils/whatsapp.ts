@@ -1,9 +1,10 @@
 import { CartItem } from '@/types'
 
-export const procesarCheckoutWhatsApp = (nombreCliente: string, cart: CartItem[]) => {
-  // NOTA: Reemplazar con el número real de WhatsApp de la tienda. Debe contener solo números (sin '+', '-' ni letras) para evitar errores 404 de resolución de WhatsApp.
-  const TELEFONO = "5491130947663"; 
-  
+export const procesarCheckoutWhatsApp = (
+  nombreCliente: string,
+  cart: CartItem[],
+  telefono: string,
+) => {
   let mensaje = `¡Hola!, mi nombre es ${nombreCliente.trim()} y estoy interesado/a en estos productos:\n\n`;
   
   let totalPrice = 0;
@@ -21,6 +22,6 @@ export const procesarCheckoutWhatsApp = (nombreCliente: string, cart: CartItem[]
   mensaje += `\n¿Podrías darme detalles así pactamos el pago y la entrega?`;
   
   // Utilizar encodeURIComponent para garantizar que los saltos de línea y caracteres especiales viajen correctamente en la URL
-  const url = `https://wa.me/${TELEFONO}?text=${encodeURIComponent(mensaje)}`;
-  window.open(url, '_blank');
+  const url = `https://wa.me/${telefono.replace(/\D/g, '')}?text=${encodeURIComponent(mensaje)}`;
+  window.open(url, '_blank', 'noopener,noreferrer');
 };
