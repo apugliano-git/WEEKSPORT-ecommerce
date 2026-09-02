@@ -222,6 +222,7 @@ ON storage.objects FOR DELETE TO authenticated
 USING (bucket_id = 'productos-imagenes' AND (SELECT public.is_admin()));
 
 DROP FUNCTION IF EXISTS public.crear_producto_con_variantes(varchar, text, uuid, varchar, varchar, numeric, text[], text[]);
+DROP FUNCTION IF EXISTS public.crear_producto_con_variantes(varchar, text, uuid, varchar, varchar, numeric, text[], text[], integer);
 
 CREATE OR REPLACE FUNCTION public.crear_producto_con_variantes(
     p_nombre character varying,
