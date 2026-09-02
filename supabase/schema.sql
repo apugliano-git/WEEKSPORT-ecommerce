@@ -361,71 +361,114 @@ END;
 $function$;
 
 CREATE OR REPLACE FUNCTION public.procesar_venta(items_payload jsonb)
- RETURNS jsonb
+RETURNS jsonb
 LANGUAGE plpgsql
- SECURITY INVOKER
- SET search_path TO 'public'
+SECURITY INVOKER
+SET search_path = ''
 AS $function$
 DECLARE
-    v_item record;
+    v_element jsonb;
     v_id_variante uuid;
-    v_cantidad_solicitada int;
-    v_cantidad_actual int;
+    v_cantidad_solicitada integer;
+    v_cantidad_actual integer;
     v_venta_id uuid;
+    v_snapshot jsonb;
+    v_ids uuid[] := ARRAY[]::uuid[];
+    v_quantities integer[] := ARRAY[]::integer[];
+    v_quantity_text text;
+    v_index integer;
 BEGIN
-    -- 1. Validar que el payload sea un array
-    IF jsonb_typeof(items_payload) != 'array' THEN
-        RAISE EXCEPTION 'Estructura de payload no soportada por el RPC' USING ERRCODE = '22023';
+    IF NOT (SELECT public.is_admin()) THEN
+        RAISE EXCEPTION 'No autorizado' USING ERRCODE = '42501';
+    END IF;
+    IF items_payload IS NULL OR jsonb_typeof(items_payload) IS DISTINCT FROM 'array' THEN
+        RAISE EXCEPTION 'El payload debe ser un array JSON' USING ERRCODE = '22023';
+    END IF;
+    IF jsonb_array_length(items_payload) = 0 OR jsonb_array_length(items_payload) > 100 THEN
+        RAISE EXCEPTION 'La venta debe contener entre 1 y 100 items' USING ERRCODE = '22023';
     END IF;
 
-    -- Generar ID único para la transacción de venta
-    v_venta_id := gen_random_uuid();
-
-    -- 2. Iterar sobre los items solicitados
-    FOR v_item IN SELECT * FROM jsonb_to_recordset(items_payload) AS x(variante_id uuid, cantidad int)
+    FOR v_element IN SELECT value FROM jsonb_array_elements(items_payload) AS elements(value)
     LOOP
-        v_id_variante := v_item.variante_id;
-        v_cantidad_solicitada := v_item.cantidad;
-
-        -- Check de constraint lógico
-        IF v_cantidad_solicitada <= 0 THEN
-            RAISE EXCEPTION 'Violación de restricción de integridad de base de datos' USING ERRCODE = '23514';
+        IF jsonb_typeof(v_element) IS DISTINCT FROM 'object'
+           OR v_element ->> 'variante_id' IS NULL
+           OR btrim(v_element ->> 'variante_id') = '' THEN
+            RAISE EXCEPTION 'Cada item debe tener un variante_id válido' USING ERRCODE = '22023';
         END IF;
-
-        -- 3. Bloqueo de fila (Pessimistic Locking)
-        SELECT cantidad INTO v_cantidad_actual 
-        FROM variantes_stock 
-        WHERE id = v_id_variante 
-        FOR UPDATE;
-
-        IF NOT FOUND THEN
-            RAISE EXCEPTION 'Registro no encontrado: %', v_id_variante USING ERRCODE = 'P0002';
+        BEGIN
+            v_id_variante := (v_element ->> 'variante_id')::uuid;
+        EXCEPTION WHEN invalid_text_representation THEN
+            RAISE EXCEPTION 'Cada item debe tener un variante_id UUID válido' USING ERRCODE = '22023';
+        END;
+        IF v_id_variante = ANY(v_ids) THEN
+            RAISE EXCEPTION 'La venta no puede repetir una variante' USING ERRCODE = '22023';
         END IF;
-
-        -- 4. Validación de negocio
-        IF v_cantidad_solicitada > v_cantidad_actual THEN
-            RAISE EXCEPTION 'Stock insuficiente para la variante %', v_id_variante USING ERRCODE = 'P0001';
+        IF jsonb_typeof(v_element -> 'cantidad') IS DISTINCT FROM 'number' THEN
+            RAISE EXCEPTION 'La cantidad debe ser un entero entre 1 y 10000' USING ERRCODE = '22023';
         END IF;
-
-        -- 5. Actualizar el inventario (stock -> cantidad)
-        UPDATE variantes_stock 
-        SET cantidad = cantidad - v_cantidad_solicitada
-        WHERE id = v_id_variante;
+        v_quantity_text := v_element ->> 'cantidad';
+        IF v_quantity_text !~ '^[0-9]+$' THEN
+            RAISE EXCEPTION 'La cantidad debe ser un entero entre 1 y 10000' USING ERRCODE = '22023';
+        END IF;
+        IF v_quantity_text::numeric < 1 OR v_quantity_text::numeric > 10000 THEN
+            RAISE EXCEPTION 'La cantidad debe ser un entero entre 1 y 10000' USING ERRCODE = '22023';
+        END IF;
+        v_cantidad_solicitada := v_quantity_text::integer;
+        v_ids := array_append(v_ids, v_id_variante);
+        v_quantities := array_append(v_quantities, v_cantidad_solicitada);
     END LOOP;
 
-    -- 6. Inserción en el historial (registro único JSON)
-    INSERT INTO ventas_historico (id, items)
-    VALUES (v_venta_id, items_payload);
+    FOR v_id_variante IN
+        SELECT id FROM unnest(v_ids) AS requested(id) ORDER BY id
+    LOOP
+        SELECT stock.cantidad
+        INTO v_cantidad_actual
+        FROM public.variantes_stock AS stock
+        WHERE stock.id = v_id_variante
+        FOR UPDATE;
+        IF NOT FOUND THEN
+            RAISE EXCEPTION 'Variante no encontrada: %', v_id_variante USING ERRCODE = 'P0002';
+        END IF;
+        v_index := array_position(v_ids, v_id_variante);
+        IF v_quantities[v_index] > v_cantidad_actual THEN
+            RAISE EXCEPTION 'Stock insuficiente para la variante %', v_id_variante USING ERRCODE = 'P0001';
+        END IF;
+    END LOOP;
 
-    -- 7. Respuesta exitosa
+    FOR v_index IN 1..array_length(v_ids, 1)
+    LOOP
+        UPDATE public.variantes_stock AS stock
+        SET cantidad = stock.cantidad - v_quantities[v_index]
+        WHERE stock.id = v_ids[v_index];
+    END LOOP;
+
+    SELECT jsonb_agg(
+        jsonb_build_object(
+            'variante_id', stock.id,
+            'cantidad', quantities.quantity,
+            'nombre_producto', product.nombre,
+            'talle', stock.talle,
+            'color', stock.color,
+            'precio_unitario', stock.precio,
+            'subtotal', stock.precio * quantities.quantity
+        ) ORDER BY stock.id
+    )
+    INTO v_snapshot
+    FROM public.variantes_stock AS stock
+    JOIN public.productos AS product ON product.id = stock.producto_id
+    JOIN unnest(v_ids, v_quantities) AS quantities(id, quantity) ON quantities.id = stock.id;
+
+    INSERT INTO public.ventas_historico (items)
+    VALUES (v_snapshot)
+    RETURNING id INTO v_venta_id;
+
     RETURN jsonb_build_object(
         'status', 'success',
         'venta_id', v_venta_id,
         'message', 'Venta procesada exitosamente'
     );
 END;
-$function$
-;
+$function$;
 
 --
 -- Políticas RLS (Row Level Security)

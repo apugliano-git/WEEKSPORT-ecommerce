@@ -1,5 +1,5 @@
-// Ajustá el path a la instancia de tu cliente supabase si es necesario
 import { supabase } from '@/lib/supabase';
+import { buildSalePayload } from './security/sales';
 
 // --- Interfaces de Tipado ---
 export interface VentaItem {
@@ -25,22 +25,26 @@ export interface ProcesarVentaResponse {
  * Función centralizada (RF-10) que procesa una lista de items vendidos.
  * Invoca el RPC transaccional que asegura la integridad de los datos.
  */
-export async function procesarVentaAtomicamente(items: VentaItem[]): Promise<ProcesarVentaResponse> {
+export async function procesarVentaAtomicamente(
+  items: Pick<VentaItem, 'variante_id' | 'cantidad'>[],
+): Promise<ProcesarVentaResponse> {
   try {
     // 1. Defensas de pre-vuelo en capa de servidor
     if (!items || items.length === 0) {
       return { status: 'error', message: 'El payload de items está vacío.' };
     }
 
-    if (items.some(item => item.cantidad <= 0)) {
+    if (items.some(item => !Number.isInteger(item.cantidad) || item.cantidad <= 0)) {
       return { status: 'error', message: 'Cantidades inválidas en el payload.' };
     }
+
+    const salePayload = buildSalePayload(items);
 
     // 2. Ejecución RPC
     // Postgres hará un rollback automático interno si se lanza alguna EXCEPTION.
     const { data, error } = await supabase
       .rpc('procesar_venta', {
-        items_payload: items // Se serializa automáticamente como JSONB
+        items_payload: salePayload
       });
 
     // 3. Control de Excepciones (Parseo de ERRCODE de PostgreSQL)
@@ -94,7 +98,7 @@ export async function procesarVentaAtomicamente(items: VentaItem[]): Promise<Pro
       message: 'Respuesta RPC malformada o inesperada.'
     };
 
-  } catch (err: any) {
+  } catch {
     return {
       status: 'error',
       message: 'Fallo en la comunicación con el cliente de Supabase.',
