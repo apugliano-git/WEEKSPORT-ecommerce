@@ -116,11 +116,30 @@ ALTER TABLE ONLY public.variantes_stock
 ALTER TABLE ONLY public.ventas_historico
     ADD CONSTRAINT ventas_historico_pkey PRIMARY KEY (id);
 
+ALTER TABLE ONLY public.variantes_stock
+    ADD CONSTRAINT variantes_stock_cantidad_nonnegative CHECK (cantidad >= 0);
+
+ALTER TABLE ONLY public.variantes_stock
+    ADD CONSTRAINT variantes_stock_precio_nonnegative CHECK (precio >= 0);
+
+ALTER TABLE ONLY public.variantes_stock
+    ADD CONSTRAINT variantes_stock_costo_nonnegative CHECK (costo IS NULL OR costo >= 0);
+
+ALTER TABLE ONLY public.productos
+    ADD CONSTRAINT productos_precio_promocional_nonnegative
+    CHECK (precio_promocional IS NULL OR precio_promocional >= 0);
+
+ALTER TABLE ONLY public.configuracion_sitio
+    ADD CONSTRAINT configuracion_sitio_singleton CHECK (id = 1);
+
+ALTER TABLE ONLY public.ventas_historico
+    ADD CONSTRAINT ventas_historico_items_nonempty_array
+    CHECK (jsonb_typeof(items) = 'array' AND jsonb_array_length(items) > 0);
+
 --
 -- Índices Adicionales
 --
 
-CREATE INDEX idx_categorias_slug ON public.categorias USING btree (slug);
 CREATE INDEX idx_productos_activo ON public.productos USING btree (activo);
 CREATE INDEX idx_productos_categoria_id ON public.productos USING btree (categoria_id);
 CREATE INDEX idx_productos_tipo_talle ON public.productos USING btree (tipo_talle);
@@ -141,6 +160,15 @@ ALTER TABLE ONLY public.variantes_stock
 --
 -- Funciones / RPCs
 --
+
+CREATE OR REPLACE FUNCTION public.is_admin()
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SET search_path = ''
+AS $function$
+    SELECT COALESCE((SELECT auth.jwt() -> 'app_metadata' ->> 'role') = 'admin', false)
+$function$;
 
 CREATE OR REPLACE FUNCTION public.actualizar_precio_color(p_producto_id uuid, p_color text, p_precio_nuevo numeric)
  RETURNS json
@@ -267,8 +295,8 @@ AS $function$
 
 CREATE OR REPLACE FUNCTION public.procesar_venta(items_payload jsonb)
  RETURNS jsonb
- LANGUAGE plpgsql
- SECURITY DEFINER
+LANGUAGE plpgsql
+ SECURITY INVOKER
  SET search_path TO 'public'
 AS $function$
 DECLARE
@@ -332,10 +360,6 @@ END;
 $function$
 ;
 
--- Seguridad: Revocar acceso público para evitar que actores externos
--- sin autenticar puedan alterar el stock llamando la función directamente.
-REVOKE EXECUTE ON FUNCTION public.procesar_venta(jsonb) FROM public, anon;
-
 --
 -- Políticas RLS (Row Level Security)
 --
@@ -348,37 +372,70 @@ ALTER TABLE public.variantes_stock ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.ventas_historico ENABLE ROW LEVEL SECURITY;
 
 -- categorias
-CREATE POLICY "Permitir lectura pública de categorias" ON public.categorias FOR SELECT TO public USING (true);
-CREATE POLICY "Restringir escritura de categorias a administradoras" ON public.categorias FOR ALL TO authenticated USING ((auth.role() = 'authenticated'::text));
+CREATE POLICY categorias_public_read ON public.categorias FOR SELECT TO anon, authenticated USING (true);
+CREATE POLICY categorias_admin_write ON public.categorias FOR ALL TO authenticated
+    USING ((SELECT public.is_admin())) WITH CHECK ((SELECT public.is_admin()));
 
 -- configuracion_sitio
-CREATE POLICY "Escritura solo administradores" ON public.configuracion_sitio FOR UPDATE TO authenticated USING (true);
-CREATE POLICY "Lectura pública" ON public.configuracion_sitio FOR SELECT TO public USING (true);
+CREATE POLICY configuracion_public_read ON public.configuracion_sitio FOR SELECT TO anon, authenticated USING (true);
+CREATE POLICY configuracion_admin_update ON public.configuracion_sitio FOR UPDATE TO authenticated
+    USING ((SELECT public.is_admin())) WITH CHECK ((SELECT public.is_admin()));
 
 -- productos
-CREATE POLICY "Admins pueden ver todos los productos" ON public.productos FOR SELECT TO authenticated USING (true);
-CREATE POLICY "Lectura publica de productos activos" ON public.productos FOR SELECT TO public USING ((activo = true));
-CREATE POLICY "Solo admins pueden actualizar productos" ON public.productos FOR UPDATE TO authenticated USING (true) WITH CHECK (true);
-CREATE POLICY "Solo admins pueden eliminar productos" ON public.productos FOR DELETE TO authenticated USING (true);
-CREATE POLICY "Solo admins pueden insertar productos" ON public.productos FOR INSERT TO authenticated WITH CHECK (true);
+CREATE POLICY productos_public_active_read ON public.productos FOR SELECT TO anon, authenticated
+    USING (activo = true);
+CREATE POLICY productos_admin_read ON public.productos FOR SELECT TO authenticated
+    USING ((SELECT public.is_admin()));
+CREATE POLICY productos_admin_insert ON public.productos FOR INSERT TO authenticated
+    WITH CHECK ((SELECT public.is_admin()));
+CREATE POLICY productos_admin_update ON public.productos FOR UPDATE TO authenticated
+    USING ((SELECT public.is_admin())) WITH CHECK ((SELECT public.is_admin()));
+CREATE POLICY productos_admin_delete ON public.productos FOR DELETE TO authenticated
+    USING ((SELECT public.is_admin()));
 
 -- talles_por_tipo
--- NOTA: talles_por_tipo NO tiene políticas de escritura (INSERT/
--- UPDATE/DELETE), ni siquiera para el rol authenticated. Esto es
--- intencional o pendiente de decisión de negocio: hoy solo se puede
--- modificar corriendo SQL directo en el SQL Editor de Supabase.
-CREATE POLICY "Lectura publica de talles_por_tipo" ON public.talles_por_tipo FOR SELECT TO public USING (true);
+CREATE POLICY talles_public_read ON public.talles_por_tipo FOR SELECT TO anon, authenticated USING (true);
 
 -- variantes_stock
-CREATE POLICY "Admins pueden ver todas las variantes" ON public.variantes_stock FOR SELECT TO authenticated USING (true);
-CREATE POLICY "Lectura publica de variantes" ON public.variantes_stock FOR SELECT TO public USING ((EXISTS ( SELECT 1 FROM public.productos p WHERE ((p.id = variantes_stock.producto_id) AND (p.activo = true)))));
-CREATE POLICY "Solo admins pueden actualizar variantes" ON public.variantes_stock FOR UPDATE TO authenticated USING (true) WITH CHECK (true);
-CREATE POLICY "Solo admins pueden eliminar variantes" ON public.variantes_stock FOR DELETE TO authenticated USING (true);
-CREATE POLICY "Solo admins pueden insertar variantes" ON public.variantes_stock FOR INSERT TO authenticated WITH CHECK (true);
+CREATE POLICY variantes_public_visible_read ON public.variantes_stock FOR SELECT TO anon, authenticated
+    USING (
+        visible_en_catalogo = true
+        AND EXISTS (
+            SELECT 1 FROM public.productos AS p
+            WHERE p.id = variantes_stock.producto_id AND p.activo = true
+        )
+    );
+CREATE POLICY variantes_admin_read ON public.variantes_stock FOR SELECT TO authenticated
+    USING ((SELECT public.is_admin()));
+CREATE POLICY variantes_admin_insert ON public.variantes_stock FOR INSERT TO authenticated
+    WITH CHECK ((SELECT public.is_admin()));
+CREATE POLICY variantes_admin_update ON public.variantes_stock FOR UPDATE TO authenticated
+    USING ((SELECT public.is_admin())) WITH CHECK ((SELECT public.is_admin()));
+CREATE POLICY variantes_admin_delete ON public.variantes_stock FOR DELETE TO authenticated
+    USING ((SELECT public.is_admin()));
 
 -- ventas_historico
-CREATE POLICY "Permitir inserción exclusiva a administradores" ON public.ventas_historico FOR INSERT TO authenticated WITH CHECK (true);
-CREATE POLICY "Permitir lectura exclusiva a administradores" ON public.ventas_historico FOR SELECT TO authenticated USING (true);
+CREATE POLICY ventas_admin_read ON public.ventas_historico FOR SELECT TO authenticated
+    USING ((SELECT public.is_admin()));
+CREATE POLICY ventas_admin_insert ON public.ventas_historico FOR INSERT TO authenticated
+    WITH CHECK ((SELECT public.is_admin()));
+
+-- No write policies for talles_por_tipo: size definitions are managed by SQL migrations.
+
+REVOKE ALL ON FUNCTION public.is_admin() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.is_admin() TO anon, authenticated;
+
+REVOKE EXECUTE ON FUNCTION public.crear_producto_con_variantes(varchar, text, uuid, varchar, varchar, numeric, text[], text[]) FROM PUBLIC, anon;
+REVOKE EXECUTE ON FUNCTION public.agregar_color_a_producto(uuid, text, numeric, integer) FROM PUBLIC, anon;
+REVOKE EXECUTE ON FUNCTION public.actualizar_precio_color(uuid, text, numeric) FROM PUBLIC, anon;
+REVOKE EXECUTE ON FUNCTION public.actualizar_precio_producto(uuid, numeric) FROM PUBLIC, anon;
+REVOKE EXECUTE ON FUNCTION public.procesar_venta(jsonb) FROM PUBLIC, anon;
+
+GRANT EXECUTE ON FUNCTION public.crear_producto_con_variantes(varchar, text, uuid, varchar, varchar, numeric, text[], text[]) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.agregar_color_a_producto(uuid, text, numeric, integer) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.actualizar_precio_color(uuid, text, numeric) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.actualizar_precio_producto(uuid, numeric) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.procesar_venta(jsonb) TO authenticated;
 
 --
 -- Triggers
@@ -386,4 +443,3 @@ CREATE POLICY "Permitir lectura exclusiva a administradores" ON public.ventas_hi
 -- NOTA: Se verificó el estado de producción en information_schema.triggers
 -- y se confirma que NO existen triggers activos en el esquema public.
 --
-
