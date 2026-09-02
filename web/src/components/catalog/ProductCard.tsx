@@ -1,8 +1,7 @@
 'use client'
 
-import React, { useState } from 'react'
+import React from 'react'
 import { Producto } from '@/types'
-import { useCart } from '@/context/CartContext'
 
 interface ProductCardProps {
   producto: Producto;

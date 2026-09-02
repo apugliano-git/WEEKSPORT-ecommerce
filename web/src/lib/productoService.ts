@@ -30,7 +30,7 @@ export async function actualizarProducto(productoId: string, datos: DatosProduct
     }
 
     return { status: 'success', message: 'Producto actualizado con éxito.' };
-  } catch (err: any) {
+  } catch {
     return { status: 'error', message: 'Fallo de red o excepción interna al actualizar producto.' };
   }
 }
@@ -44,7 +44,7 @@ export async function setPromocion(productoId: string, precio_promocional: numbe
 
     if (error) return { status: 'error', message: error.message };
     return { status: 'success', message: 'Promoción aplicada.' };
-  } catch (err: any) {
+  } catch {
     return { status: 'error', message: 'Error al aplicar la promoción.' };
   }
 }
@@ -58,7 +58,7 @@ export async function clearPromocion(productoId: string): Promise<ApiResponse> {
 
     if (error) return { status: 'error', message: error.message };
     return { status: 'success', message: 'Promoción eliminada.' };
-  } catch (err: any) {
+  } catch {
     return { status: 'error', message: 'Error al eliminar la promoción.' };
   }
 }
@@ -72,8 +72,7 @@ export async function eliminarProducto(productoId: string): Promise<ApiResponse>
 
     if (error) return { status: 'error', message: error.message };
     return { status: 'success', message: 'Producto eliminado correctamente.' };
-  } catch (err: any) {
+  } catch {
     return { status: 'error', message: 'Error al eliminar el producto.' };
   }
 }
-

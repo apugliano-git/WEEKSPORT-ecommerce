@@ -2,10 +2,11 @@
 
 import React, { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Producto, Categoria } from '@/types'
+import { Producto, Categoria, VarianteStock } from '@/types'
 import { actualizarStockVariante, agregarColorAProducto, actualizarPrecioColor } from '@/lib/inventarioService'
 import { eliminarProducto } from '@/lib/productoService'
 import { TableShell, Select, Input, Badge, Button, BottomSheet, Switch } from '@/components/admin/ui'
+import { groupVariantsByColor, sortVariants, type VariantColorGroup } from './variantUtils'
 
 // Normaliza un nombre de color: primera letra mayúscula, resto minúsculas
 function capitalizarColor(s: string): string {
@@ -22,35 +23,7 @@ interface StockManagerProps {
   initialSearch?: string;
 }
 
-const SIZE_ORDER = ['XXS', 'XS', 'S', 'M', 'L', 'XL', 'XXL', '2XL', '3XL', '4XL', '5XL', '85', '90', '95', '100', '105', '110', '115', '120', '120+'];
-
-function sortVariants(variants: any[]) {
-  return [...variants].sort((a, b) => {
-    const idxA = SIZE_ORDER.indexOf(a.talle.toUpperCase());
-    const idxB = SIZE_ORDER.indexOf(b.talle.toUpperCase());
-    
-    if (idxA !== -1 && idxB !== -1) return idxA - idxB;
-    if (idxA !== -1) return -1;
-    if (idxB !== -1) return 1;
-    return a.talle.localeCompare(b.talle);
-  });
-}
-
-function agruparPorColor(variantes: any[]) {
-  const grupos = new Map<string, any[]>();
-  for (const v of variantes) {
-    const key = v.color || 'Sin color';
-    if (!grupos.has(key)) grupos.set(key, []);
-    grupos.get(key)!.push(v);
-  }
-  return Array.from(grupos.entries()).map(([color, vars]) => ({
-    color,
-    precio: vars[0]?.precio ?? 0,
-    variantes: sortVariants(vars),
-  }));
-}
-
-function StockVariantRow({ variante, hideColor = false }: { variante: any, hideColor?: boolean }) {
+function StockVariantRow({ variante, hideColor = false }: { variante: VarianteStock, hideColor?: boolean }) {
   const [currentStock, setCurrentStock] = useState(variante.cantidad);
   const [inputValue, setInputValue] = useState<number | ''>(variante.cantidad);
   const [status, setStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
@@ -122,12 +95,12 @@ function StockVariantRow({ variante, hideColor = false }: { variante: any, hideC
   );
 }
 
-function MobileVariantAdjust({ variante, onBack }: { variante: any, onBack: () => void }) {
+function MobileVariantAdjust({ variante, onBack }: { variante: VarianteStock, onBack: () => void }) {
   const [ajuste, setAjuste] = useState<number>(0);
+  const [currentStock, setCurrentStock] = useState(variante.cantidad);
   const [status, setStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState('');
 
-  const currentStock = variante.cantidad;
   const finalStock = Math.max(0, currentStock + ajuste);
   
   const canSave = ajuste !== 0 && status !== 'saving';
@@ -141,7 +114,7 @@ function MobileVariantAdjust({ variante, onBack }: { variante: any, onBack: () =
     
     if (res.status === 'success') {
       setStatus('success');
-      variante.cantidad = finalStock; // Optimistic update
+      setCurrentStock(finalStock);
       setTimeout(() => {
         onBack();
       }, 1000);
@@ -351,7 +324,7 @@ function MobileAgregarColor({
   );
 }
 
-function MobileColorGroupBlock({ productoId, grupo, onRefresh, onSelectVariant }: { productoId: string, grupo: any, onRefresh: () => void, onSelectVariant: (v: any) => void }) {
+function MobileColorGroupBlock({ productoId, grupo, onRefresh, onSelectVariant }: { productoId: string, grupo: VariantColorGroup, onRefresh: () => void, onSelectVariant: (v: VarianteStock) => void }) {
   const [isOpen, setIsOpen] = useState(false);
   const [isEditingPrice, setIsEditingPrice] = useState(false);
   const [newPrice, setNewPrice] = useState(grupo.precio);
@@ -402,7 +375,7 @@ function MobileColorGroupBlock({ productoId, grupo, onRefresh, onSelectVariant }
       
       {isOpen && (
         <div className="flex flex-col gap-2 mt-1">
-          {grupo.variantes.map((v: any) => {
+          {grupo.variantes.map((v) => {
             const isCritical = v.cantidad < 3;
             const isOutOfStock = v.cantidad === 0;
             return (
@@ -431,7 +404,7 @@ function MobileColorGroupBlock({ productoId, grupo, onRefresh, onSelectVariant }
 
 function MobileProductSheetContent({ product, onDelete }: { product: Producto, onDelete: () => void }) {
   const router = useRouter();
-  const [selectedVariant, setSelectedVariant] = useState<any | null>(null);
+  const [selectedVariant, setSelectedVariant] = useState<VarianteStock | null>(null);
   const [showAgregarColor, setShowAgregarColor] = useState(false);
 
   if (selectedVariant) {
@@ -443,7 +416,7 @@ function MobileProductSheetContent({ product, onDelete }: { product: Producto, o
       {product?.variantes_stock?.length === 0 && !showAgregarColor ? (
         <p className="text-sm text-gray-500 text-center py-4">Este producto no tiene variantes.</p>
       ) : (
-        agruparPorColor(product?.variantes_stock || []).map(grupo => (
+        groupVariantsByColor(product?.variantes_stock || []).map(grupo => (
           <MobileColorGroupBlock 
             key={grupo.color} 
             productoId={product.id} 
@@ -485,7 +458,7 @@ function MobileProductSheetContent({ product, onDelete }: { product: Producto, o
   )
 }
 
-function ColorGroupBlock({ productoId, grupo, onRefresh }: { productoId: string, grupo: any, onRefresh: () => void }) {
+function ColorGroupBlock({ productoId, grupo, onRefresh }: { productoId: string, grupo: VariantColorGroup, onRefresh: () => void }) {
   const [isOpen, setIsOpen] = useState(false);
   const [isEditingPrice, setIsEditingPrice] = useState(false);
   const [newPrice, setNewPrice] = useState(grupo.precio);
@@ -543,7 +516,7 @@ function ColorGroupBlock({ productoId, grupo, onRefresh }: { productoId: string,
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5 text-sm">
-              {grupo.variantes.map((v: any) => (
+              {grupo.variantes.map((v) => (
                 <StockVariantRow key={v.id} variante={v} hideColor={true} />
               ))}
             </tbody>
@@ -604,7 +577,7 @@ function StockProductRow({ product, categoryMap, onDelete }: { product: Producto
                 <p className="text-sm text-gray-500 text-center py-2">Este producto no tiene variantes.</p>
               ) : (
                 <div className="flex flex-col gap-2">
-                  {agruparPorColor(variants).map(grupo => (
+          {groupVariantsByColor(variants).map(grupo => (
                     <ColorGroupBlock key={grupo.color} productoId={product.id} grupo={grupo} onRefresh={() => router.refresh()} />
                   ))}
                   {showAgregarColor && (

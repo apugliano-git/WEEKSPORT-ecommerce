@@ -162,8 +162,8 @@ export default function ConfiguracionPage() {
       } else {
         setMensaje({ tipo: 'success', texto: 'Configuración actualizada exitosamente.' });
       }
-    } catch (err: any) {
-      console.error(err);
+    } catch {
+      console.error('config_save_failed');
       setMensaje({ tipo: 'error', texto: 'Ocurrió un error inesperado al guardar.' });
     } finally {
       setIsLoading(false);

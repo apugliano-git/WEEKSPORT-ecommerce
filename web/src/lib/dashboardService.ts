@@ -7,6 +7,14 @@ export interface MetricasInventario {
   ventasDelMes: number;
 }
 
+interface StockCountRow {
+  cantidad: number;
+}
+
+interface ProductStockRow {
+  variantes_stock: StockCountRow[] | null;
+}
+
 export async function obtenerMetricasInventario(): Promise<MetricasInventario> {
   const supabase = await createClient();
   
@@ -30,14 +38,15 @@ export async function obtenerMetricasInventario(): Promise<MetricasInventario> {
   let variantesCriticas = 0;
 
   if (productos) {
-    productos.forEach(prod => {
+    const productRows = productos as ProductStockRow[];
+    productRows.forEach(prod => {
       const variantes = prod.variantes_stock || [];
-      const totalStock = variantes.reduce((sum: number, v: any) => sum + v.cantidad, 0);
+      const totalStock = variantes.reduce((sum: number, v: StockCountRow) => sum + v.cantidad, 0);
       if (totalStock === 0) {
         productosSinStock++;
       }
       
-      variantes.forEach((v: any) => {
+      variantes.forEach((v: StockCountRow) => {
         if (v.cantidad === 1) {
           variantesCriticas++;
         }

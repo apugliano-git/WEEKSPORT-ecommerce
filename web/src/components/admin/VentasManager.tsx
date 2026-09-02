@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { procesarVentaAtomicamente, VentaItem } from '@/lib/ventasService';
-import { Producto, Categoria, VarianteStock } from '@/types';
+import { Producto, Categoria } from '@/types';
 
 // Item enriquecido con snapshot del producto/variante
 interface CarritoItem extends VentaItem {
@@ -96,28 +96,23 @@ export function VentasManager({ productos, categorias }: VentasManagerProps) {
     return [...new Set(colors)];
   }, [selectedProduct]);
 
-  useEffect(() => {
-    if (selectedProductId && availableColors.length === 1 && !selectedColor) {
-      setSelectedColor(availableColors[0]);
-    }
-  }, [selectedProductId, availableColors, selectedColor]);
+  const selectedColorForUi = selectedColor ?? (
+    selectedProductId && availableColors.length === 1 ? availableColors[0] : null
+  );
 
   const availableSizes = useMemo(() => {
-    if (!selectedProduct || !selectedProduct.variantes_stock || !selectedColor) return [];
+    if (!selectedProduct || !selectedProduct.variantes_stock || !selectedColorForUi) return [];
     return selectedProduct.variantes_stock
-      .filter(v => v.cantidad > 0 && (v.color || 'Sin color') === selectedColor)
+      .filter(v => v.cantidad > 0 && (v.color || 'Sin color') === selectedColorForUi)
       .map(v => ({ id: v.id, talle: v.talle, stock: v.cantidad }));
-  }, [selectedProduct, selectedColor]);
+  }, [selectedProduct, selectedColorForUi]);
 
-  // Autoseleccionar talle si solo hay uno
-  useEffect(() => {
-    if (selectedColor && availableSizes.length === 1 && !selectedVariantId) {
-      setSelectedVariantId(availableSizes[0].id);
-    }
-  }, [selectedColor, availableSizes, selectedVariantId]);
+  const selectedVariantIdForUi = selectedVariantId ?? (
+    selectedColorForUi && availableSizes.length === 1 ? availableSizes[0].id : null
+  );
 
   const handleAgregarAlCarrito = () => {
-    if (!selectedVariantId || !selectedProduct) {
+    if (!selectedVariantIdForUi || !selectedProduct) {
       setMensaje({ tipo: 'error', texto: 'Completá la selección del producto.' });
       return;
     }
@@ -127,7 +122,7 @@ export function VentasManager({ productos, categorias }: VentasManagerProps) {
     }
 
     // Buscar variante
-    const varianteSeleccionada = selectedProduct.variantes_stock?.find(v => v.id === selectedVariantId);
+    const varianteSeleccionada = selectedProduct.variantes_stock?.find(v => v.id === selectedVariantIdForUi);
 
     if (!varianteSeleccionada) {
       setMensaje({ tipo: 'error', texto: `Variante no encontrada.` });
@@ -140,7 +135,7 @@ export function VentasManager({ productos, categorias }: VentasManagerProps) {
     }
 
     // Verificar si ya está en el carrito y si la suma excede el stock
-    const itemEnCarrito = carrito.find(item => item.variante_id === selectedVariantId);
+    const itemEnCarrito = carrito.find(item => item.variante_id === selectedVariantIdForUi);
     if (itemEnCarrito && itemEnCarrito.cantidad + cantidadInput > varianteSeleccionada.cantidad) {
       setMensaje({ tipo: 'error', texto: `La suma excede el stock. Solo hay ${varianteSeleccionada.cantidad} unidades disponibles.` });
       return;
@@ -161,7 +156,7 @@ export function VentasManager({ productos, categorias }: VentasManagerProps) {
     };
 
     setCarrito(prev => {
-      const index = prev.findIndex(item => item.variante_id === selectedVariantId);
+      const index = prev.findIndex(item => item.variante_id === selectedVariantIdForUi);
       if (index !== -1) {
         const nuevoCarrito = [...prev];
         const updated = { ...nuevoCarrito[index] };
@@ -211,7 +206,7 @@ export function VentasManager({ productos, categorias }: VentasManagerProps) {
           texto: `Fallo atómico (Rollback ejecutado): ${resultado.message} (Cód: ${resultado.errorCode || 'N/A'})`
         });
       }
-    } catch (error) {
+    } catch {
       setMensaje({ tipo: 'error', texto: 'Error crítico de red o servidor. Verifique consola.' });
     } finally {
       setIsLoading(false);
@@ -314,7 +309,7 @@ export function VentasManager({ productos, categorias }: VentasManagerProps) {
               <div className="flex-1">
                 <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">1. Color</label>
                 <select
-                  value={selectedColor || ''}
+                  value={selectedColorForUi || ''}
                   onChange={(e) => { setSelectedColor(e.target.value); setSelectedVariantId(null); }}
                   className="w-full bg-[#1A1A20] text-white border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#F400A1] transition-shadow appearance-none cursor-pointer"
                 >
@@ -326,9 +321,9 @@ export function VentasManager({ productos, categorias }: VentasManagerProps) {
               <div className="flex-1">
                 <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">2. Talle</label>
                 <select
-                  value={selectedVariantId || ''}
+                  value={selectedVariantIdForUi || ''}
                   onChange={(e) => setSelectedVariantId(e.target.value)}
-                  disabled={!selectedColor}
+                  disabled={!selectedColorForUi}
                   className="w-full bg-[#1A1A20] text-white border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#F400A1] transition-shadow appearance-none disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                 >
                   <option value="" disabled>Seleccionar talle...</option>
@@ -351,7 +346,7 @@ export function VentasManager({ productos, categorias }: VentasManagerProps) {
               <div className="flex items-end">
                 <button
                   onClick={handleAgregarAlCarrito}
-                  disabled={!selectedVariantId}
+                  disabled={!selectedVariantIdForUi}
                   className="w-full sm:w-auto bg-[#F400A1] hover:bg-[#D000A0] text-white font-bold px-6 py-2.5 rounded-xl text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-[#F400A1]/20 h-[42px]"
                 >
                   Agregar

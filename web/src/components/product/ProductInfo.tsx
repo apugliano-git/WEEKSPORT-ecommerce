@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState } from 'react'
-import { Producto, VarianteStock } from '@/types'
+import { Producto } from '@/types'
 import { useCart } from '@/context/CartContext'
 
 interface ProductInfoProps {

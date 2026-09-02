@@ -35,7 +35,7 @@ export async function actualizarVariante(
     }
 
     return { status: 'success', message: 'Variante actualizada con éxito.' };
-  } catch (err: any) {
+  } catch {
     return { status: 'error', message: 'Fallo de red o excepción interna al actualizar variante.' };
   }
 }
@@ -52,7 +52,7 @@ export async function eliminarVariante(varianteId: string): Promise<ApiResponse>
     }
 
     return { status: 'success', message: 'Variante eliminada.' };
-  } catch (err: any) {
+  } catch {
     return { status: 'error', message: 'Fallo de red o excepción interna al eliminar variante.' };
   }
 }

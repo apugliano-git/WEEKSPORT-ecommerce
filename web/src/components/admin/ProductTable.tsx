@@ -1,5 +1,7 @@
 'use client'
 
+/* eslint-disable @next/next/no-img-element -- Supabase public URLs are runtime-configured and cannot be safely enumerated in next/image remotePatterns. */
+
 import React, { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Producto, Categoria, VarianteStock } from '@/types'
@@ -7,6 +9,7 @@ import { actualizarProducto, setPromocion, clearPromocion } from '@/lib/producto
 import { actualizarVariante, eliminarVariante } from '@/lib/variantesService'
 import { subirImagenProducto } from '@/lib/inventarioService'
 import { Switch, BottomSheet, Badge, Button } from '@/components/admin/ui'
+import { groupVariantsByColor } from './variantUtils'
 
 // Normaliza un nombre de color: primera letra mayúscula, resto minúsculas
 function capitalizarColor(s: string): string {
@@ -223,19 +226,6 @@ function VarianteRow({
 
 
 
-function agruparPorColor(variantes: any[]) {
-  const grupos = new Map<string, any[]>();
-  for (const v of variantes) {
-    const key = v.color || 'Sin color';
-    if (!grupos.has(key)) grupos.set(key, []);
-    grupos.get(key)!.push(v);
-  }
-  return Array.from(grupos.entries()).map(([color, vars]) => ({
-    color,
-    variantes: vars,
-  }));
-}
-
 // Sub-componente: fila de producto (expandible)
 // ─────────────────────────────────────────────
 function ProductRow({
@@ -278,7 +268,6 @@ function ProductRow({
     return a.talle.localeCompare(b.talle);
   });
 
-  const coloresExistentes = [...new Set(variants.map(v => v.color).filter(Boolean))];
   const totalStock = variants.reduce((sum, v) => sum + v.cantidad, 0);
 
   let priceDisplay = 'N/A';
@@ -375,7 +364,7 @@ function ProductRow({
                 <p className="text-sm text-gray-500 text-center py-2">Este producto no tiene variantes de stock.</p>
               ) : (
                 <div className="flex flex-col gap-3">
-                  {agruparPorColor(variants).map(grupo => {
+                  {groupVariantsByColor(variants, tallesDisponibles).map(grupo => {
                     const isOpen = coloresAbiertos.has(grupo.color);
                     return (
                       <div key={grupo.color} className="bg-[#1A1A20] rounded-xl border border-white/5 overflow-hidden shadow-inner">
@@ -408,7 +397,7 @@ function ProductRow({
                                 </tr>
                               </thead>
                               <tbody className="divide-y divide-white/5 text-sm">
-                                {grupo.variantes.map((v: any) => (
+                                {grupo.variantes.map((v) => (
                                   <VarianteRow
                                     key={v.id}
                                     variante={v}
@@ -590,7 +579,7 @@ function MobileProductSheet({
         <p className="text-sm text-gray-500 text-center py-4">Este producto no tiene variantes.</p>
       ) : (
         <div className="flex flex-col gap-3">
-          {agruparPorColor(variants).map(grupo => {
+          {groupVariantsByColor(variants).map(grupo => {
             const isOpen = coloresAbiertos.has(grupo.color);
             return (
               <div key={grupo.color} className="bg-[#1A1A20] rounded-xl border border-white/5 overflow-hidden shadow-sm">
@@ -610,7 +599,7 @@ function MobileProductSheet({
                 
                 {isOpen && (
                   <div className="flex flex-col gap-px bg-white/5">
-                    {grupo.variantes.map((v: any) => (
+                    {grupo.variantes.map((v) => (
                       <div key={v.id} className="bg-[#0F0F12] p-1">
                         <MobileVarianteItem variante={v} tallesDisponibles={tallesDisponibles} productoNombre={product.nombre} onRefresh={onRefresh} />
                       </div>
@@ -704,11 +693,10 @@ export function ProductTable({ productos, categorias, tallesPorTipo }: ProductTa
     });
   }, [productos, searchTerm, selectedCategoryId, categoryMap, hideOutOfStock]);
 
-  const [cantidadVisibleAdmin, setCantidadVisibleAdmin] = useState(20);
-
-  React.useEffect(() => {
-    setCantidadVisibleAdmin(20);
-  }, [searchTerm, selectedCategoryId, hideOutOfStock]);
+  const filterKey = `${searchTerm}\u0000${selectedCategoryId ?? ''}\u0000${hideOutOfStock}`;
+  const [pagination, setPagination] = useState({ key: '', count: 20 });
+  const cantidadVisibleAdmin = pagination.key === filterKey ? pagination.count : 20;
+  const showMore = () => setPagination({ key: filterKey, count: cantidadVisibleAdmin + 20 });
 
   const visibleProducts = filteredProducts.slice(0, cantidadVisibleAdmin);
 
@@ -825,7 +813,7 @@ export function ProductTable({ productos, categorias, tallesPorTipo }: ProductTa
           {cantidadVisibleAdmin < filteredProducts.length && (
             <div className="p-4 flex justify-center border-t border-white/5 bg-[#0F0F12]">
               <button 
-                onClick={() => setCantidadVisibleAdmin(prev => prev + 20)}
+                onClick={showMore}
                 className="px-6 py-2.5 border border-[#F400A1]/50 text-[#F400A1] font-bold rounded-xl hover:bg-[#F400A1]/10 transition-colors text-sm"
               >
                 Ver más productos
@@ -893,7 +881,7 @@ export function ProductTable({ productos, categorias, tallesPorTipo }: ProductTa
               {cantidadVisibleAdmin < filteredProducts.length && (
                 <div className="flex justify-center mt-2">
                   <button 
-                    onClick={() => setCantidadVisibleAdmin(prev => prev + 20)}
+                    onClick={showMore}
                     className="px-6 py-3 border border-[#F400A1]/50 text-[#F400A1] font-bold rounded-xl hover:bg-[#F400A1]/10 transition-colors text-sm"
                   >
                     Ver más productos
@@ -1171,7 +1159,7 @@ export function ProductTable({ productos, categorias, tallesPorTipo }: ProductTa
                   setEditError('');
                   setIsUploadingImages(true);
                   
-                  let newUrls: string[] = [];
+                  const newUrls: string[] = [];
                   if (archivosImagenes.length > 0) {
                     for (const file of archivosImagenes) {
                       const res = await subirImagenProducto(file);

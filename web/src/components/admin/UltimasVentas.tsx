@@ -2,11 +2,12 @@
 
 import { useState } from 'react';
 import { VentaDetalle } from '@/components/admin/VentaDetalle';
+import type { VentaItem } from '@/lib/ventasService';
 
 interface VentaRow {
   id: string;
   created_at: string;
-  items: any[] | null;
+  items: VentaItem[] | null;
   detalles?: string | null;
 }
 
@@ -15,11 +16,11 @@ function formatFecha(fechaStr: string) {
   return d.toLocaleDateString('es-AR', { day: 'numeric', month: 'short' }) + ', ' + d.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
 }
 
-function resumirItems(items: any) {
+function resumirItems(items: VentaItem[] | null) {
   if (!Array.isArray(items) || items.length === 0) return 'Sin artículos';
-  const hasNames = items.every((i: any) => i && typeof i === 'object' && i.nombre_producto);
+  const hasNames = items.every(item => typeof item.nombre_producto === 'string' && item.nombre_producto.length > 0);
   if (hasNames) {
-    if (items.length <= 2) return items.map((i: any) => i.nombre_producto).join(', ');
+    if (items.length <= 2) return items.map(item => item.nombre_producto ?? '').join(', ');
     return `${items[0].nombre_producto}, ${items[1].nombre_producto} y ${items.length - 2} más`;
   }
   return `${items.length} artículo${items.length !== 1 ? 's' : ''}`;
