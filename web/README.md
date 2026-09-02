@@ -11,7 +11,7 @@ A diferencia de un catálogo digital convencional o una simple pasarela de pedid
 1. **Gestión Transaccional con Atomicidad (ACID):** Las operaciones críticas (como el descuento de stock al registrar ventas o la creación masiva de variantes) no delegan la integridad al cliente; se ejecutan mediante **procedimientos almacenados (RPC / PLpgSQL)** en PostgreSQL con rollback automático ante inconsistencias o quiebres de stock.
 2. **Matriz de Variantes Dinámica:** Soporta configuraciones dimensionales complejas (Categoría × Género × Esquema de Talle × Color × Precios) con esquemas de talles desacoplados de la lógica dura y persistidos en base de datos (`talles_por_tipo`).
 3. **Punto de Venta (POS) & Historial Inmutable:** Permite asentar ventas de mostrador con snapshot histórico de precios y variantes, garantizando trazabilidad contable y auditoría del inventario.
-4. **Experiencia de Usuario Híbrida (Storefront + WhatsApp Checkout):** Catálogo ultra-rápido en Next.js 15 (React 19 / Server Components) con carrito persistido y generación automatizada de órdenes listas para procesamiento vía WhatsApp Business.
+4. **Experiencia de Usuario Híbrida (Storefront + WhatsApp Checkout):** Catálogo ultra-rápido en Next.js 16 (React 19 / Server Components) con carrito persistido y generación automatizada de órdenes listas para procesamiento vía WhatsApp Business.
 
 ---
 
@@ -19,7 +19,7 @@ A diferencia de un catálogo digital convencional o una simple pasarela de pedid
 
 ```mermaid
 graph TD
-    subgraph Frontend [Next.js 15 App Router - React 19]
+    subgraph Frontend [Next.js 16 App Router - React 19]
         Store[Storefront Público / Catálogo]
         Cart[Carrito & Checkout WhatsApp]
         AdminDash[Dashboard de Métricas]
@@ -53,7 +53,7 @@ graph TD
 
 | Capa / Módulo | Tecnología | Justificación Técnica |
 |---|---|---|
-| **Framework Web** | [Next.js 15](https://nextjs.org/) (App Router) | Renderizado híbrido (RSC + Client Islands), Server Actions y streaming de datos con performance nativa. |
+| **Framework Web** | [Next.js 16.3.4](https://nextjs.org/) (App Router) | Renderizado híbrido (RSC + Client Islands), Server Actions y streaming de datos con performance nativa. |
 | **Librería UI** | [React 19](https://react.dev/) | Acceso a las últimas APIs de concurrencia, transiciones y hooks de estado. |
 | **Tipado** | [TypeScript 5](https://www.typescriptlang.org/) | Tipado estricto end-to-end (Frontend, Payloads RPC y esquemas de BD). |
 | **Estilos & Diseño** | [Tailwind CSS v4](https://tailwindcss.com/) | Motor de estilos de última generación, diseño adaptativo mobile-first y tema oscuro de alto contraste. |
@@ -85,7 +85,7 @@ graph TD
 
 ```
 WEEKSPORT/
-├── web/                           # Aplicación Next.js 15
+├── web/                           # Aplicación Next.js 16
 │   ├── src/
 │   │   ├── app/
 │   │   │   ├── (store)/           # Rutas públicas del catálogo y checkout
@@ -135,23 +135,16 @@ npm install
 ```
 
 ### 2. Configurar variables de entorno
-Crear un archivo `.env.local` en la carpeta `web/` tomando como base `.env.example`:
-
-```bash
-cp .env.example .env.local
-```
-
-Completar con las credenciales del proyecto Supabase (**Project Settings → API**):
+Crear un archivo `.env.local` en la carpeta `web/` con las credenciales del proyecto Supabase (**Project Settings → API**):
 ```env
 NEXT_PUBLIC_SUPABASE_URL="https://tu-proyecto.supabase.co"
 NEXT_PUBLIC_SUPABASE_ANON_KEY="tu-anon-key-publica"
 ```
 
 ### 3. Configuración de Base de Datos y Funciones RPC
-En el **SQL Editor** de Supabase, asegurar la ejecución de los esquemas base de datos y las dos funciones críticas:
-- `crear_producto_con_variantes(...)`: Generación atómica del producto y su producto cartesiano de talles × colores.
-- `procesar_venta(...)`: Descuento de stock en bloque con rollback ante inconsistencias.
-- Tabla auxiliar `talles_por_tipo`: Repositorio ordenado de talles para esquemas estándar, tops, calzado o talle único.
+Para una instalación nueva, ejecutar `../supabase/schema.sql`. Para una base existente, seguir `../supabase/DEPLOYMENT.md` y aplicar sólo `../supabase/migrations/202609020001_security_integrity_hardening.sql` después del backup y preflight. No ejecutar parches históricos.
+
+La RPC `crear_producto_con_variantes(...)` recibe cantidades por talle y crea atómicamente la matriz talles × colores. `procesar_venta(...)` descuenta stock con bloqueo pesimista y crea un snapshot server-side inmutable; el navegador sólo envía IDs y cantidades.
 
 ### 4. Ejecutar el entorno de desarrollo
 ```bash
@@ -164,13 +157,20 @@ La aplicación iniciará en `http://localhost:3000`.
 ## 🔐 Seguridad y Reglas de Negocio
 
 1. **Row Level Security (RLS):**
-   - Catálogo público accesible en modo solo lectura (`SELECT`) para usuarios anónimos (`anon`).
-   - Modificaciones, inserciones y eliminaciones restringidas a usuarios autenticados con rol de administrador.
+   - Catálogo público accesible en modo solo lectura (`SELECT`) para `anon` y usuarios autenticados.
+   - Modificaciones, inserciones y eliminaciones restringidas al claim server-controlled `app_metadata.role = "admin"`; `authenticated` por sí solo no es administrador.
+   - Las variantes públicas requieren producto activo y `visible_en_catalogo = true`; productos inactivos, variantes ocultas y ventas históricas no son legibles por no-admin.
 2. **Defensas a Nivel de Base de Datos:**
    - Constraints `CHECK (cantidad >= 0)` en variantes para evitar stock negativo ante condiciones de carrera.
    - Restricciones de unicidad compuestas `UNIQUE (producto_id, talle, color)` para garantizar consistencia del inventario.
 3. **Variables Protegidas:**
-   - La clave `SERVICE_ROLE` de Supabase jamás se expone en el cliente web ni en variables de entorno públicas.
+   - La clave `SERVICE_ROLE` de Supabase jamás se expone en el cliente web ni en variables de entorno públicas. Las claves publishable/anon son identificadores públicos: su seguridad depende de RLS, no de ocultarlas.
+
+4. **Storage:**
+   - El bucket público `productos-imagenes` acepta sólo JPEG/PNG/WebP/AVIF hasta 5 MiB; sus escrituras requieren el claim administrador.
+
+5. **Identidad:**
+   - Cypher no está integrado. Supabase Auth sigue siendo el único issuer; reevaluar sólo si varios servicios requieren una autoridad común y Cypher ofrece compatibilidad OIDC completa.
 
 ---
 

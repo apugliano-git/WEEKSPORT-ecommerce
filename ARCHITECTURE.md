@@ -24,7 +24,7 @@ graph TD
 
     subgraph BackendServices [Supabase BaaS]
         AuthService[Supabase Auth - JWT]
-        StorageBucket[Supabase Storage - Bucket 'productos']
+        StorageBucket[Supabase Storage - Bucket 'productos-imagenes']
         PostgresDB[(PostgreSQL 15+)]
     end
 
@@ -77,7 +77,7 @@ Para la visualización de productos en la tienda se implementa el patrón de int
 
 1. **Carrito de Compras (`CartContext`):**
    - Centraliza los items seleccionados (`producto_id`, `variante_id`, `talle`, `color`, `precio`, `cantidad`, `imagen`).
-   - Sincroniza su estado con `localStorage` (`cart_items`) para no perder la orden ante recargas del navegador.
+   - Sincroniza su estado con `localStorage` (`weeksport_cart`) después de validar que los datos persistidos tienen forma de carrito.
 2. **Búsqueda y Filtros (`SearchContext`):**
    - Maneja el término de búsqueda de texto, sincronizado con la barra de navegación.
 
@@ -104,7 +104,7 @@ El registro de ventas en el módulo POS implementa control de concurrencia y val
 2. **Bloqueo Pesimista (`FOR UPDATE`):** Bloquea a nivel de fila cada variante en `variantes_stock` durante la ejecución de la transacción para evitar que otra venta simultánea descuente el mismo stock.
 3. **Validación de Existencias:** Si `cantidad_solicitada > cantidad_disponible`, la función emite una excepción (`RAISE EXCEPTION 'Stock insuficiente...'`) y aborta la operación completa.
 4. **Descuento de Stock:** Actualiza `variantes_stock` decrementando la cantidad.
-5. **Histórico Inmutable:** Inserta un snapshot en `ventas_historico` con los ítems y precios pactados al momento de la venta.
+5. **Histórico Inmutable:** Inserta un snapshot construido por la base de datos en `ventas_historico`; el cliente sólo aporta `variante_id` y `cantidad`, y nombre, talle, color, precio y subtotal se leen dentro de la misma transacción.
 
 ---
 
@@ -118,7 +118,7 @@ La autenticación administrativa utiliza Supabase Auth gestionado con el paquete
 2. Las credenciales generan tokens JWT (`access_token` y `refresh_token`) almacenados en cookies `HttpOnly` y `Secure`.
 3. El archivo `proxy.ts` intercepta cada solicitud entrante y ejecuta `updateSession` (`lib/supabase/middleware.ts`):
    - Valida la sesión activa con `supabase.auth.getUser()`.
-   - Si un usuario no autenticado intenta entrar a cualquier ruta `/admin/*` (excepto `/admin/login`), es redirigido automáticamente a `/admin/login`.
+   - Si un usuario no autenticado o sin `app_metadata.role = "admin"` intenta entrar a cualquier ruta `/admin/*` (excepto `/admin/login`), es redirigido automáticamente a `/admin/login`.
    - Si un usuario con sesión activa intenta ingresar a `/admin/login`, es redirigido a `/admin`.
    - Renueva automáticamente los tokens de sesión expirados refrescando las cookies en la respuesta HTTP.
 
@@ -127,14 +127,15 @@ La autenticación administrativa utiliza Supabase Auth gestionado con el paquete
 PostgreSQL aplica políticas de seguridad por tabla según el rol del cliente:
 
 - **Rol `anon` (Público):** Permiso exclusivo de lectura (`SELECT`) sobre productos activos (`activo = true`), variantes vinculadas a productos activos, categorías y configuración general del sitio. No tiene permisos de inserción, actualización ni eliminación.
-- **Rol `authenticated` (Administradores):** Permisos completos de lectura y escritura (`SELECT`, `INSERT`, `UPDATE`, `DELETE`) en todas las tablas del negocio.
-- **Restricción de RPCs:** La ejecución de `procesar_venta` tiene el acceso revocado para `anon` (`REVOKE EXECUTE ON FUNCTION public.procesar_venta FROM anon`), exigiendo sesión autenticada.
+- **Rol `authenticated` no administrador:** Sólo conserva las lecturas públicas; no puede leer registros inactivos/ocultos ni escribir.
+- **Rol administrador:** Un JWT con `app_metadata.role = "admin"` habilita las lecturas privadas y las escrituras definidas por las políticas, sin permisos de actualización/borrado sobre `ventas_historico`.
+- **Restricción de RPCs:** Las RPC mutantes se pueden ejecutar sólo como `authenticated` y verifican el claim administrador; `anon` y `public` no tienen `EXECUTE`.
 
 ---
 
 ## 5. Gestión de Imágenes y Archivos
 
-- **Almacenamiento:** Bucket público `productos` en Supabase Storage.
+- **Almacenamiento:** Bucket público `productos-imagenes` en Supabase Storage; las escrituras requieren el claim administrador y los formatos JPEG/PNG/WebP/AVIF hasta 5 MiB.
 - **Estrategia de Nombres:** Nombres aleatorios únicos (`crypto.randomUUID() + extensión`) para evitar colisiones.
 - **Galería de Producto:** Array de strings en `productos.imagenes` que guarda las URLs públicas entregadas por la CDN de Supabase. El primer elemento del array actúa como portada principal.
 
@@ -149,4 +150,4 @@ La capa gratuita de Supabase pausa automáticamente los proyectos de base de dat
    - Realiza una solicitud HTTP directa a la API REST de Supabase autenticada con la `SUPABASE_ANON_KEY`.
    - Mantiene activo el cómputo de PostgreSQL sin requerir intervención manual.
 2. **Vercel Cron (`web/vercel.json` & `/api/cron/keepalive`):**
-   - Endpoint alternativo que realiza consultas de conteo a la tabla `categorias`.
+   - Endpoint alternativo que realiza consultas de conteo a la tabla `categorias` y responde 401 si `CRON_SECRET` falta o el header Bearer no coincide.

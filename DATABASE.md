@@ -38,7 +38,7 @@ Almacena las clasificaciones generales de los productos.
 | `created_at`| `timestamptz` | SÍ | `now()` | Fecha de creación. |
 
 - **Restricciones:** `PRIMARY KEY (id)`, `UNIQUE (slug)`.
-- **Índices:** `idx_categorias_slug` (B-Tree en `slug`).
+- **Índices:** la restricción `UNIQUE (slug)` ya provee el índice necesario; no se crea un índice redundante.
 
 ---
 
@@ -116,6 +116,7 @@ Unidad mínima de inventario (SKU tácito). Relaciona producto, talle y color co
   - `PRIMARY KEY (id)`
   - `UNIQUE (producto_id, talle, color)`
   - `FOREIGN KEY (producto_id) REFERENCES productos(id) ON DELETE CASCADE`
+  - `CHECK (cantidad >= 0)`, `CHECK (precio >= 0)` y `CHECK (costo IS NULL OR costo >= 0)`
 - **Índices:** `idx_variantes_producto_id`, `idx_variantes_visible`.
 
 ---
@@ -129,6 +130,8 @@ Registro inmutable de transacciones completadas (terminal POS / Mostrador).
 | `items` | `jsonb` | NO | - | Snapshot de artículos vendidos (`variante_id`, `cantidad`, `precio_unitario`, `nombre`, etc.). |
 | `detalles` | `text` | SÍ | - | Notas opcionales o medio de pago. |
 | `created_at` | `timestamptz` | SÍ | `now()` | Fecha y hora de la transacción. |
+
+- **Restricciones:** `CHECK (jsonb_typeof(items) = 'array' AND jsonb_array_length(items) > 0)`. No hay políticas de `UPDATE` o `DELETE` en Data API: el historial es inmutable.
 
 ---
 
@@ -146,14 +149,12 @@ crear_producto_con_variantes(
     p_tipo_talle varchar,
     p_precio_inicial numeric,
     p_imagenes text[] DEFAULT ARRAY[]::text[],
-    p_colores text[] DEFAULT ARRAY[]::text[]
+    p_colores text[] DEFAULT ARRAY[]::text[],
+    p_cantidades jsonb DEFAULT '{}'::jsonb
 ) RETURNS json
 ```
-- **Flujo:**
-  1. Inserta en `productos`.
-  2. Valida la existencia de talles en `talles_por_tipo`.
-  3. Realiza `CROSS JOIN` entre `talles_por_tipo` y `p_colores` e inserta en `variantes_stock` con `cantidad = 0` y `precio = p_precio_inicial`.
-  4. Retorna `{"status": "success", "producto_id": "..."}` o genera rollback ante error.
+- **Seguridad y validación:** requiere `app_metadata.role = "admin"`, nombre/categoría/precio válidos, colores no vacíos ni duplicados y un objeto de cantidades entero/no negativo cuyas claves sean talles configurados.
+- **Flujo:** inserta el producto y realiza `CROSS JOIN` entre `talles_por_tipo` y colores; `p_cantidades[talle]` se copia a cada color y los talles ausentes reciben cero. No captura excepciones: cualquier error revierte producto y variantes.
 
 ---
 
@@ -163,15 +164,14 @@ Procesa una orden de mostrador de forma atómica aplicando bloqueo pesimista.
 ```sql
 procesar_venta(items_payload jsonb) RETURNS jsonb
 ```
-- **Firma de Seguridad:** `SECURITY DEFINER`, `REVOKE EXECUTE ON FUNCTION public.procesar_venta(jsonb) FROM public, anon`.
-- **Payload esperado:** `[{"variante_id": "UUID", "cantidad": 2}, ...]`
+- **Firma de Seguridad:** `SECURITY INVOKER`, `SET search_path = ''`, requiere `public.is_admin()` y sólo `authenticated` tiene `EXECUTE`; `anon` y `public` están revocados.
+- **Payload esperado:** `[{"variante_id": "UUID", "cantidad": 2}, ...]`; el cliente no puede aportar nombres ni precios.
 - **Flujo:**
-  1. Valida que el payload sea un array JSONB y las cantidades sean mayores a 0.
-  2. Itera sobre cada item ejecutando `SELECT cantidad FROM variantes_stock WHERE id = ... FOR UPDATE`.
-  3. Si `cantidad_solicitada > cantidad_actual`, emite `RAISE EXCEPTION 'Stock insuficiente...'` (Código `P0001`) abortando toda la operación.
-  4. Actualiza `variantes_stock` descontando las cantidades.
-  5. Inserta el registro en `ventas_historico`.
-  6. Retorna `{"status": "success", "venta_id": "...", "message": "Venta procesada exitosamente"}`.
+  1. Rechaza payload nulo/no-array/vacío, más de 100 items, IDs inválidos o duplicados y cantidades no enteras fuera de `1..10000`.
+  2. Bloquea todas las variantes por UUID ordenado.
+  3. Verifica existencia y stock de todas las filas antes de descontar; una excepción revierte stock e historial.
+  4. Construye dentro de la transacción el snapshot con nombre, talle, color, precio de la base y subtotal.
+  5. Inserta una fila inmutable en `ventas_historico` y retorna `{"status": "success", "venta_id": "...", "message": "Venta procesada exitosamente"}`.
 
 ---
 
@@ -197,18 +197,23 @@ agregar_color_a_producto(
 
 ## 4. Políticas de Seguridad por Fila (Row Level Security - RLS)
 
-Todas las tablas públicas tienen RLS habilitado:
+Todas las tablas públicas tienen RLS habilitado. `public.is_admin()` devuelve verdadero únicamente para el claim server-controlled `app_metadata.role = "admin"`:
 
 | Tabla | Operación | Rol | Condición / Política |
 |---|---|---|---|
-| `categorias` | `SELECT` | `public` (`anon`) | Lectura habilitada (`USING (true)`). |
-| `categorias` | `ALL` | `authenticated` | Exclusivo administradores autenticados. |
-| `configuracion_sitio` | `SELECT` | `public` | Lectura habilitada. |
-| `configuracion_sitio` | `UPDATE` | `authenticated` | Modificación exclusiva para administradores. |
-| `productos` | `SELECT` | `public` | Solo productos activos (`activo = true`). |
-| `productos` | `SELECT` | `authenticated` | Lectura de todos los productos (activos e inactivos). |
-| `productos` | `INSERT`, `UPDATE`, `DELETE` | `authenticated` | Exclusivo administradores autenticados. |
-| `talles_por_tipo` | `SELECT` | `public` | Lectura habilitada para construcción de selectores. |
-| `variantes_stock` | `SELECT` | `public` | Solo variantes pertenecientes a productos activos. |
-| `variantes_stock` | `SELECT`, `INSERT`, `UPDATE`, `DELETE` | `authenticated` | Control total para administradores. |
-| `ventas_historico`| `SELECT`, `INSERT` | `authenticated` | Restringido exclusivamente al rol autenticado. |
+| `categorias` | `SELECT` | `anon`, `authenticated` | Lectura habilitada; escritura sólo si `is_admin()`. |
+| `configuracion_sitio` | `SELECT` | `anon`, `authenticated` | Lectura habilitada; `UPDATE` sólo si `is_admin()`. |
+| `productos` | `SELECT` | `anon`, `authenticated` | No-admin sólo ve `activo = true`; admin ve todos. |
+| `productos` | `INSERT`, `UPDATE`, `DELETE` | `authenticated` | Requiere `is_admin()`. |
+| `talles_por_tipo` | `SELECT` | `anon`, `authenticated` | Lectura; no hay políticas de escritura. |
+| `variantes_stock` | `SELECT` | `anon`, `authenticated` | No-admin sólo ve variantes visibles de productos activos; admin ve todas. |
+| `variantes_stock` | `INSERT`, `UPDATE`, `DELETE` | `authenticated` | Requiere `is_admin()`. |
+| `ventas_historico`| `SELECT`, `INSERT` | `authenticated` | Requiere `is_admin()`; no hay `UPDATE`/`DELETE`. |
+
+### Storage
+
+El bucket público `productos-imagenes` limita objetos a 5 MiB y a `image/jpeg`, `image/png`, `image/webp` o `image/avif`. La lectura pública existe para servir el storefront; insertar, actualizar o borrar objetos requiere `is_admin()`.
+
+### Despliegue
+
+`supabase/migrations/202609020001_security_integrity_hardening.sql` es la única migración desplegable. Es fail-fast: el preflight aborta si hay datos incompatibles con las nuevas restricciones. Para backup, provisión del administrador, verificación y rollback consultar `supabase/DEPLOYMENT.md`; no ejecutar parches históricos.

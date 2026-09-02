@@ -23,13 +23,15 @@ Sistema web para la gestión comercial y operativa de **WEEKSPORT**. Integra un 
 - **Configuración del Sitio (`/admin/configuracion`):** Edición en vivo de banners del Hero, número de WhatsApp de ventas, textos de envío, medios de pago y datos legales.
 - **Autenticación (`/admin/login`):** Acceso protegido mediante Supabase Auth con sesiones validadas por middleware SSR.
 
+La autorización administrativa requiere exactamente el claim server-controlled `app_metadata.role = "admin"`; estar `authenticated`, pertenecer a un dominio de correo o tener un valor en `user_metadata` no concede permisos. PostgreSQL RLS y las funciones RPC vuelven a comprobar esta condición. Las variantes públicas sólo se leen cuando pertenecen a un producto activo y tienen `visible_en_catalogo = true`. El POS construye el snapshot de venta dentro de PostgreSQL con el precio/nombre vigentes y `ventas_historico` no admite actualizaciones ni borrados por Data API.
+
 ---
 
 ## 🛠️ Stack Tecnológico
 
 | Componente | Tecnología | Uso en el proyecto |
 |---|---|---|
-| **Frontend Framework** | [Next.js](https://nextjs.org/) (App Router) | Renderizado híbrido (Server y Client Components), Server Actions y rutas API. |
+| **Frontend Framework** | [Next.js](https://nextjs.org/) 16.3.4 (App Router) | Renderizado híbrido (Server y Client Components), Server Actions y rutas API. |
 | **Librería UI** | [React 19](https://react.dev/) | Construcción de interfaces interactivas y hooks de estado. |
 | **Estilos** | [Tailwind CSS v4](https://tailwindcss.com/) | Sistema de utilidades CSS, diseño responsive y modo oscuro. |
 | **Carruseles** | Embla Carousel | Desplazamiento táctil e interactivo en Hero Banner y fichas de producto. |
@@ -48,8 +50,9 @@ WEEKSPORT/
 │   └── workflows/
 │       └── supabase-keep-alive.yml   # Workflow para ping periódico a Supabase
 ├── supabase/
-│   ├── schema.sql                    # Definición completa de tablas, ENUMs, RLS y RPCs
-│   └── *.sql                         # Scripts de migración y parches individuales
+│   ├── schema.sql                    # Esquema canónico de tablas, RLS y RPCs
+│   ├── migrations/                   # Única migración desplegable ordenada
+│   └── DEPLOYMENT.md                 # Preflight, rollout y rollback revisado
 ├── web/                              # Aplicación Next.js
 │   ├── public/                       # Assets estáticos (iconos, imágenes)
 │   ├── src/
@@ -57,14 +60,9 @@ WEEKSPORT/
 │   │   │   ├── (store)/              # Rutas del catálogo público
 │   │   │   │   ├── @modal/           # Ruta interceptada para modal de producto
 │   │   │   │   └── producto/[id]/    # Vista completa de producto
-│   │   │   ├── admin/                # Rutas del panel administrativo
-│   │   │   │   ├── categorias/       # Administración de categorías
-│   │   │   │   ├── configuracion/    # Ajustes generales y Hero Banner
-│   │   │   │   ├── inventario/       # Alta de productos y variantes
-│   │   │   │   ├── login/            # Inicio de sesión administrativo
-│   │   │   │   ├── productos/        # Edición y catálogo administrativo
-│   │   │   │   ├── stock/            # Ajuste rápido de stock
-│   │   │   │   └── ventas/           # Terminal de punto de venta (POS)
+│   │   │   ├── admin/                # Shell, login y grupo protegido
+│   │   │   │   ├── (protected)/      # Todas las rutas operativas admin
+│   │   │   │   └── login/            # Inicio de sesión administrativo
 │   │   │   ├── api/
 │   │   │   │   └── cron/keepalive/   # Endpoint auxiliar para healthcheck
 │   │   │   ├── globals.css           # Estilos base y variables de Tailwind v4
@@ -122,8 +120,8 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY="tu-clave-anon-publica"
 
 ### 3. Configuración de Base de Datos en Supabase
 1. Ingresar al **SQL Editor** de Supabase.
-2. Ejecutar el contenido del archivo `supabase/schema.sql`. Esto creará los tipos ENUM, las tablas con sus restricciones, los esquemas iniciales de talles (`talles_por_tipo`), los procedimientos almacenados (RPCs) y las políticas de seguridad (RLS).
-3. En la sección **Storage** de Supabase, crear un bucket público llamado `productos` para permitir la carga y lectura de imágenes.
+2. Para una instalación nueva, ejecutar `supabase/schema.sql`. Para una base existente, seguir exclusivamente `supabase/DEPLOYMENT.md` y aplicar `supabase/migrations/202609020001_security_integrity_hardening.sql` después del preflight; no ejecutar parches SQL sueltos.
+3. La migración configura el bucket público `productos-imagenes`, limitado a 5 MiB y JPEG/PNG/WebP/AVIF. Las escrituras de Storage requieren `app_metadata.role = "admin"`.
 
 ### 4. Iniciar el entorno de desarrollo
 ```bash
@@ -139,3 +137,7 @@ Para consultar especificaciones técnicas profundas, revisar los siguientes docu
 
 - **[ARCHITECTURE.md](file:///home/augep/Documentos/Proyectos/WEEKSPORT/ARCHITECTURE.md):** Patrones de renderizado en Next.js, flujo de autenticación SSR, ciclo de transacciones ACID y diseño de soluciones.
 - **[DATABASE.md](file:///home/augep/Documentos/Proyectos/WEEKSPORT/DATABASE.md):** Diccionario de tablas, tipos de datos, funciones RPC detalladas, restricciones de integridad y políticas RLS.
+
+### Decisión de identidad
+
+Cypher no está integrado. Supabase Auth sigue siendo el único emisor de tokens e identidad de WEEKSPORT; reevaluar Cypher sólo si varios servicios necesitan una autoridad común y existe compatibilidad OIDC completa, eligiendo un único issuer.
