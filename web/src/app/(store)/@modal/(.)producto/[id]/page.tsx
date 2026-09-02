@@ -1,4 +1,5 @@
-import { supabase } from '@/lib/supabase';
+import { createClient } from '@/lib/supabase/server';
+import { deterministicProductOrder, filterVisibleInStock, visibleVariants } from '@/lib/catalog/relatedProducts';
 import { notFound } from 'next/navigation';
 import { ProductModal } from '@/components/product/ProductModal';
 import { Producto } from '@/types';
@@ -12,6 +13,7 @@ export default async function InterceptedProductPage({
 }) {
   const resolvedParams = await params;
   const productId = resolvedParams.id;
+  const supabase = await createClient();
 
   // ----- Misma lógica de fetching que (store)/producto/[id]/page.tsx -----
 
@@ -27,30 +29,8 @@ export default async function InterceptedProductPage({
 
   const producto: Producto = {
     ...productoBruto,
-    variantes_stock: (productoBruto.variantes_stock || []).filter(
-      (v: any) => v.visible_en_catalogo
-    ),
+    variantes_stock: visibleVariants(productoBruto.variantes_stock),
   };
-
-  function shuffleArray<T>(array: T[]): T[] {
-    const arr = [...array];
-    for (let i = arr.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [arr[i], arr[j]] = [arr[j], arr[i]];
-    }
-    return arr;
-  }
-
-  function filterVisibleVariants(prods: any[]): Producto[] {
-    return prods.map((prod) => ({
-      ...prod,
-      variantes_stock: (prod.variantes_stock || []).filter(
-        (v: any) => v.visible_en_catalogo
-      ),
-    })).filter(prod => 
-      prod.variantes_stock.reduce((acc: number, v: any) => acc + v.cantidad, 0) > 0
-    );
-  }
 
   let similares: Producto[] = [];
 
@@ -65,10 +45,10 @@ export default async function InterceptedProductPage({
       .neq('id', producto.id)
       .eq('activo', true)
       .limit(15);
-    nivel1Data = filterVisibleVariants(nivel1 || []);
+    nivel1Data = filterVisibleInStock(nivel1 || []);
   }
 
-  similares = shuffleArray(nivel1Data).slice(0, 4);
+  similares = deterministicProductOrder(nivel1Data, producto.id).slice(0, 4);
 
   // Nivel 2: mismo género
   if (similares.length < 4 && producto.genero) {
@@ -82,7 +62,7 @@ export default async function InterceptedProductPage({
       .eq('activo', true)
       .limit(15);
 
-    const pool2 = shuffleArray(filterVisibleVariants(nivel2 || []));
+    const pool2 = deterministicProductOrder(filterVisibleInStock(nivel2 || []), producto.id);
     similares = [...similares, ...pool2.slice(0, 4 - similares.length)];
   }
 
@@ -97,7 +77,7 @@ export default async function InterceptedProductPage({
       .eq('activo', true)
       .limit(15);
 
-    const pool3 = shuffleArray(filterVisibleVariants(nivel3 || []));
+    const pool3 = deterministicProductOrder(filterVisibleInStock(nivel3 || []), producto.id);
     similares = [...similares, ...pool3.slice(0, 4 - similares.length)];
   }
 

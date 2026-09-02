@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase';
+import { createClient } from '@/lib/supabase/client';
 import { buildSalePayload } from './security/sales';
 
 // --- Interfaces de Tipado ---
@@ -29,6 +29,7 @@ export async function procesarVentaAtomicamente(
   items: Pick<VentaItem, 'variante_id' | 'cantidad'>[],
 ): Promise<ProcesarVentaResponse> {
   try {
+    const supabase = createClient();
     // 1. Defensas de pre-vuelo en capa de servidor
     if (!items || items.length === 0) {
       return { status: 'error', message: 'El payload de items está vacío.' };

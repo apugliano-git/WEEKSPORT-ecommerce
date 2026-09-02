@@ -1,9 +1,11 @@
 import { StoreClient } from "@/components/catalog/StoreClient";
-import { supabase } from "@/lib/supabase";
+import { createClient } from "@/lib/supabase/server";
+import { filterVisibleInStock, visibleVariants } from "@/lib/catalog/relatedProducts";
 import { Suspense } from "react";
 export const revalidate = 0; // Evitar caché estática para reflejar cambios en tiempo real
 
 export default async function HomePage() {
+  const supabase = await createClient();
   // 0. Obtener Configuración
   const { data: config } = await supabase
     .from('configuracion_sitio')
@@ -35,12 +37,10 @@ export default async function HomePage() {
   const productosBrutos = productosData || [];
   
   // Filtrar variantes para mostrar solo las visibles en el catálogo público y excluir productos sin stock
-  const productos = productosBrutos.map(prod => ({
+  const productos = filterVisibleInStock(productosBrutos).map(prod => ({
     ...prod,
-    variantes_stock: (prod.variantes_stock || []).filter((v: any) => v.visible_en_catalogo)
-  })).filter(prod => 
-    prod.variantes_stock.reduce((acc: number, v: any) => acc + v.cantidad, 0) > 0
-  );
+    variantes_stock: visibleVariants(prod.variantes_stock),
+  }));
 
   return (
     <main className="flex-1 w-full flex flex-col">
