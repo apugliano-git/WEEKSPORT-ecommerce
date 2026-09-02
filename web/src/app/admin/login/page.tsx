@@ -1,15 +1,14 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { isAdminUser } from '@/lib/security/auth';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const router = useRouter();
   const supabase = createClient();
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -28,9 +27,16 @@ export default function LoginPage() {
         return;
       }
 
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!isAdminUser(user)) {
+        await supabase.auth.signOut();
+        setError('La cuenta no tiene permisos de administración.');
+        return;
+      }
+
       // Crucial para forzar a Next.js a recargar el middleware con las nuevas cookies.
       window.location.href = '/admin';
-    } catch (err) {
+    } catch {
       setError('Ocurrió un error inesperado al iniciar sesión.');
     } finally {
       setLoading(false);

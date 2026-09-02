@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { isAdminUser } from '@/lib/security/auth'
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
@@ -38,13 +39,13 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser()
 
   // 3. Blindaje perimetral: Proteger /admin/* excluyendo /admin/login
-  if (
-    request.nextUrl.pathname.startsWith('/admin') &&
-    !request.nextUrl.pathname.startsWith('/admin/login') &&
-    !user
-  ) {
+  const isAdminPath = request.nextUrl.pathname === '/admin' || request.nextUrl.pathname.startsWith('/admin/')
+  const isLoginPath = request.nextUrl.pathname === '/admin/login' || request.nextUrl.pathname.startsWith('/admin/login/')
+
+  if (isAdminPath && !isLoginPath && !isAdminUser(user)) {
     const url = request.nextUrl.clone()
     url.pathname = '/admin/login'
+    if (user) url.searchParams.set('error', 'forbidden')
     
     // Redirección HTTP 307 (Temporary Redirect)
     return NextResponse.redirect(url, 307)
