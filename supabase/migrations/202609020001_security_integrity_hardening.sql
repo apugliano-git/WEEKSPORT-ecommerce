@@ -204,6 +204,10 @@ DROP POLICY IF EXISTS productos_imagenes_admin_insert ON storage.objects;
 DROP POLICY IF EXISTS productos_imagenes_admin_update ON storage.objects;
 DROP POLICY IF EXISTS productos_imagenes_admin_delete ON storage.objects;
 
+CREATE POLICY productos_imagenes_public_read
+ON storage.objects FOR SELECT TO anon, authenticated
+USING (bucket_id = 'productos-imagenes');
+
 CREATE POLICY productos_imagenes_admin_insert
 ON storage.objects FOR INSERT TO authenticated
 WITH CHECK (bucket_id = 'productos-imagenes' AND (SELECT public.is_admin()));

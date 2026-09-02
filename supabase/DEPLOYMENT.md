@@ -1,6 +1,6 @@
 # WEEKSPORT database deployment runbook
 
-This runbook is intentionally separate from application deployment. The migration is prepared in Git but is not applied by the coding agent.
+The base hardening migration and the Storage follow-up were applied and verified manually on 2026-09-02. Apply later timestamped migrations in order through the normal Supabase migration workflow.
 
 ## Before applying
 
@@ -30,6 +30,8 @@ Force that user to sign in again after the metadata change so the JWT contains t
 
 Apply `supabase/migrations/202609020001_security_integrity_hardening.sql` through the normal Supabase migration workflow. Do not paste the old patch files in `supabase/`.
 
+If the base migration is already installed, apply `supabase/migrations/202609020002_storage_admin_read.sql`. It keeps anonymous bucket listing disabled while restoring the `SELECT` permission administrators need to update existing objects.
+
 After applying, run these read-only checks:
 
 ```sql
@@ -56,6 +58,13 @@ where routine_schema = 'public'
     'actualizar_precio_producto', 'procesar_venta'
   )
 order by routine_name;
+
+select policyname, roles, cmd
+from pg_policies
+where schemaname = 'storage'
+  and tablename = 'objects'
+  and policyname like 'productos_imagenes_%'
+order by policyname;
 ```
 
 Verify with an admin session that the current dashboard can read and write its intended resources. Verify with an anonymous session that only public catalog data is readable and all writes, sales history, inactive products, and invisible variants are denied.
