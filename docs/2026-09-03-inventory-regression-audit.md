@@ -77,7 +77,9 @@
 - [x] Stock escritorio reversible: `1 → 2`, la fila mostró `OK` y el total `8`; restauración `2 → 1`, total `7`, recarga confirmó `7`.
 - [x] Navegaciones autenticadas medidas tres veces por ruta (DOMContentLoaded observado desde el cliente): `/` `1109/787/992 ms`, `/admin/stock` `1031/883/908 ms`, `/admin/productos` `835/1079/874 ms`.
 - [x] Medición HTTP adicional: `/` respondió `200` con TTFB `0.483 s` y total `0.881 s`; las rutas administrativas sin sesión responden `307` (`/admin/stock`: TTFB `0.164 s`, total `0.164 s`; `/admin/productos`: TTFB `0.136 s`, total `0.136 s`).
-- [ ] Inventario de objetos huérfanos: la lista anónima del bucket devuelve `[]` por RLS y la API de navegador no expone la sesión JWT para consultar Storage como administrador. No se borró nada. Ejecutar la consulta de sólo lectura siguiente en el SQL Editor de Supabase con una cuenta del proyecto.
+- [x] Inventario de objetos huérfanos ejecutado en el SQL Editor: devolvió 53 candidatos por `31.138.465` bytes (aprox. `29,7 MiB`), con fechas entre el 28/06/2026 y el 18/08/2026. Como durante ese período la clienta estuvo cargando productos, se decidió conservarlos todos; no se borró ni se modificó ningún objeto.
+
+**Decisión de retención:** estos 53 objetos no deben tratarse como basura. El flujo actual sube los archivos antes de confirmar el producto por RPC, por lo que un intento incompleto, una edición o una baja anterior puede dejar una imagen sin referencia actual. La consulta es un inventario de candidatos, no una orden de borrado. No agregar limpieza automática ni borrar por lote sin asociar/revisar cada archivo.
 
 ### Consulta de sólo lectura para Storage
 
