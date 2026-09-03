@@ -7,7 +7,7 @@ const { update, single } = vi.hoisted(() => {
 })
 vi.mock('@/lib/supabase/client', () => ({ createClient: () => ({ from: () => ({ update }) }) }))
 
-import { setPromocion, clearPromocion } from './productoService'
+import { setPromocion, clearPromocion, setOferta } from './productoService'
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -16,11 +16,23 @@ beforeEach(() => {
 
 it('guarda precio y modo juntos; los llamados existentes siguen siendo descuentos', async () => {
   expect((await setPromocion('product-1', 800)).status).toBe('success')
-  expect(update).toHaveBeenLastCalledWith({ precio_promocional: 800, promocion_sin_precio_anterior: false })
+  expect(update).toHaveBeenLastCalledWith({ precio_promocional: 800, promocion_sin_precio_anterior: false, en_oferta: false })
   expect((await setPromocion('product-1', 1000, true)).status).toBe('success')
-  expect(update).toHaveBeenLastCalledWith({ precio_promocional: 1000, promocion_sin_precio_anterior: true })
+  expect(update).toHaveBeenLastCalledWith({ precio_promocional: 1000, promocion_sin_precio_anterior: true, en_oferta: false })
   await clearPromocion('product-1')
   expect(update).toHaveBeenLastCalledWith({ precio_promocional: null, promocion_sin_precio_anterior: false })
+})
+
+it('activa Oferta eliminando la promoción de precio en la misma escritura', async () => {
+  expect((await setOferta('product-1', true)).status).toBe('success')
+  expect(update).toHaveBeenLastCalledWith({ en_oferta: true, precio_promocional: null, promocion_sin_precio_anterior: false })
+  expect((await setOferta('product-1', false)).status).toBe('success')
+  expect(update).toHaveBeenLastCalledWith({ en_oferta: false })
+})
+
+it('no informa éxito si falla el cambio de Oferta', async () => {
+  single.mockResolvedValue({ data: null, error: { message: 'Sin permisos' } })
+  expect(await setOferta('product-1', true)).toEqual({ status: 'error', message: 'Sin permisos' })
 })
 
 it('rechaza precios no positivos o no finitos sin escribir', async () => {

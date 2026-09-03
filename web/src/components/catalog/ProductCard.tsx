@@ -15,7 +15,9 @@ export function ProductCard({ producto }: ProductCardProps) {
   const isOutOfStock = !producto.variantes_stock?.some(v => v.cantidad > 0);
 
   return (
-    <Link href={`/producto/${producto.id}`} className="flex flex-col bg-[#1A1A20] rounded-2xl overflow-hidden border border-white/5 shadow-[0_8px_30px_rgba(0,0,0,0.12)] group hover:-translate-y-1 hover:shadow-[0_20px_40px_-15px_rgba(255,92,0,0.15)] hover:border-white/10 transition-all duration-300 ease-out text-left w-full">
+    <Link href={`/producto/${producto.id}`} className={`flex flex-col bg-[#1A1A20] rounded-2xl overflow-hidden border group hover:-translate-y-1 transition-all duration-300 ease-out text-left w-full ${producto.en_oferta
+      ? 'border-[#F400A1]/60 shadow-[0_0_20px_rgba(244,0,161,0.12)] hover:border-[#F400A1] hover:shadow-[0_0_28px_rgba(244,0,161,0.24)]'
+      : 'border-white/5 shadow-[0_8px_30px_rgba(0,0,0,0.12)] hover:shadow-[0_20px_40px_-15px_rgba(255,92,0,0.15)] hover:border-white/10'}`}>
       {/* Imagen */}
       <div className="relative aspect-square bg-[#0F0F12] overflow-hidden w-full">
         {producto.imagenes[0] ? (
@@ -50,7 +52,9 @@ export function ProductCard({ producto }: ProductCardProps) {
           {producto.nombre}
         </h3>
         <div className="mt-1 flex items-end justify-between gap-2">
-          {precioPromo ? (
+          {producto.en_oferta ? (
+            <span className="block w-full mt-2 pt-2 pb-1 border-t border-[#F400A1]/25 text-center font-display text-2xl sm:text-3xl font-black italic uppercase tracking-[0.12em] text-[#F400A1] [text-shadow:0_0_16px_rgba(244,0,161,0.25)]">Oferta</span>
+          ) : precioPromo ? (
             <div className="flex flex-col gap-0.5">
               <span className="text-base font-bold font-display text-[#F400A1]">
                 {precioPromo.toLocaleString('es-AR', { style: 'currency', currency: 'ARS' })}

@@ -44,7 +44,7 @@ export async function setPromocion(productoId: string, precio_promocional: numbe
   try {
     const { error } = await supabase
       .from('productos')
-      .update({ precio_promocional, promocion_sin_precio_anterior })
+      .update({ precio_promocional, promocion_sin_precio_anterior, en_oferta: false })
       .eq('id', productoId)
       .select('id')
       .single();
@@ -69,6 +69,24 @@ export async function clearPromocion(productoId: string): Promise<ApiResponse> {
     return { status: 'success', message: 'Promoción eliminada.' };
   } catch {
     return { status: 'error', message: 'Error al eliminar la promoción.' };
+  }
+}
+
+export async function setOferta(productoId: string, activa: boolean): Promise<ApiResponse> {
+  try {
+    const { error } = await supabase
+      .from('productos')
+      .update(activa
+        ? { en_oferta: true, precio_promocional: null, promocion_sin_precio_anterior: false }
+        : { en_oferta: false })
+      .eq('id', productoId)
+      .select('id')
+      .single();
+
+    if (error) return { status: 'error', message: error.message };
+    return { status: 'success', message: 'Oferta actualizada.' };
+  } catch {
+    return { status: 'error', message: 'Error al actualizar la oferta.' };
   }
 }
 

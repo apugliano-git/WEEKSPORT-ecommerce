@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { subirImagenProducto } from '@/lib/inventarioService';
+import { guardarCategoria } from '@/lib/categoriasService';
 
 type CategoriaConImagen = {
   id: string;
@@ -19,6 +19,7 @@ export default function CategoriasPage() {
   const [mensaje, setMensaje] = useState<{ tipo: 'success' | 'error'; texto: string } | null>(null);
   
   const [selectedFiles, setSelectedFiles] = useState<Record<string, File>>({});
+  const [nombres, setNombres] = useState<Record<string, string>>({});
   const [previewUrls, setPreviewUrls] = useState<Record<string, string>>({});
   const previewUrlsRef = useRef<Record<string, string>>({});
 
@@ -69,37 +70,27 @@ export default function CategoriasPage() {
 
   const handleSave = async (categoryId: string) => {
     const file = selectedFiles[categoryId];
-    if (!file) return;
+    const categoria = categorias.find(c => c.id === categoryId);
+    if (!categoria || uploadingId !== null) return;
+    const nombre = nombres[categoryId] ?? categoria.nombre;
 
     setUploadingId(categoryId);
     setMensaje(null);
     
-    // Subir la imagen usando el servicio existente (que la sube al bucket 'productos-imagenes')
-    const res = await subirImagenProducto(file);
-    
-    if (res.error || !res.url) {
-      setMensaje({ tipo: 'error', texto: res.error || 'Error al subir la imagen' });
-      setUploadingId(null);
-      return;
-    }
-
-    // Actualizar la categoría en Supabase
-    const supabase = createClient();
-    const { error } = await supabase
-      .from('categorias')
-      .update({ imagen_url: res.url })
-      .eq('id', categoryId)
-      .select('id')
-      .single();
-
-    if (error) {
-      setMensaje({ tipo: 'error', texto: 'Error al guardar la URL en la base de datos: ' + error.message });
+    const res = await guardarCategoria(categoryId, nombre, file);
+    if (res.error || !res.data) {
+      setMensaje({ tipo: 'error', texto: res.error || 'No se pudo guardar la categoría.' });
     } else {
-      setMensaje({ tipo: 'success', texto: 'Imagen de categoría actualizada correctamente.' });
+      setMensaje({ tipo: 'success', texto: 'Categoría actualizada correctamente.' });
       const previewUrl = previewUrlsRef.current[categoryId];
       if (previewUrl) URL.revokeObjectURL(previewUrl);
       // Actualizar el estado local
-      setCategorias(prev => prev.map(c => c.id === categoryId ? { ...c, imagen_url: res.url } : c));
+      setCategorias(prev => prev.map(c => c.id === categoryId ? { ...c, ...res.data } : c));
+      setNombres(prev => {
+        const next = { ...prev };
+        delete next[categoryId];
+        return next;
+      });
       
       // Limpiar archivo seleccionado
       setSelectedFiles(prev => {
@@ -125,7 +116,7 @@ export default function CategoriasPage() {
     <div className="p-4 sm:p-8 max-w-5xl mx-auto min-h-screen bg-[#0F0F12] font-sans text-white">
       <div className="mb-8">
         <h1 className="text-3xl font-bold font-display tracking-tight text-white mb-2">Categorías</h1>
-        <p className="text-gray-400 text-sm">Gestioná las imágenes de portada de cada categoría que se muestran en la página principal.</p>
+        <p className="text-gray-400 text-sm">Editá los nombres y las imágenes de los filtros de la página principal. Podés cambiar el nombre sin subir otra foto.</p>
       </div>
 
       {mensaje && (
@@ -158,18 +149,28 @@ export default function CategoriasPage() {
                 <div className="absolute inset-0 bg-black/40" />
                 <div className="absolute inset-0 p-3 flex items-end">
                   <span className="font-display font-bold text-white uppercase tracking-wide text-xs">
-                    {categoria.nombre}
+                    {nombres[categoria.id] ?? categoria.nombre}
                   </span>
                 </div>
               </div>
 
               {/* Controles */}
               <div className="flex-1 w-full flex flex-col gap-3 justify-center">
+                <div>
+                  <label htmlFor={`nombre-${categoria.id}`} className="block text-xs font-medium text-gray-400 mb-2">Nombre del filtro</label>
+                  <input id={`nombre-${categoria.id}`} type="text"
+                    value={nombres[categoria.id] ?? categoria.nombre}
+                    onChange={e => { setNombres(prev => ({ ...prev, [categoria.id]: e.target.value })); setMensaje(null); }}
+                    disabled={uploadingId !== null}
+                    className="w-full min-w-0 rounded-xl bg-[#0F0F12] border border-white/10 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-[#F400A1] disabled:opacity-50"
+                  />
+                  {nombres[categoria.id] !== undefined && !nombres[categoria.id].trim() && <p className="text-xs text-red-400 mt-1">Ingresá un nombre.</p>}
+                </div>
                 <div className={`p-3 border rounded-xl transition-all ${
                   uploadingId === categoria.id ? 'bg-zinc-800/30 border-[#F400A1]/50 animate-pulse' : 'bg-[#0F0F12] border-white/10'
                 }`}>
                   <label className="block text-xs font-medium text-gray-400 mb-2">
-                    {uploadingId === categoria.id ? 'Subiendo imagen...' : 'Seleccionar Imagen (Max 5MB)'}
+                    {uploadingId === categoria.id ? 'Guardando...' : 'Seleccionar Imagen (Max 5MB)'}
                   </label>
                   <input 
                     type="file" 
@@ -184,10 +185,10 @@ export default function CategoriasPage() {
                   />
                 </div>
 
-                {selectedFiles[categoria.id] && (
+                {(selectedFiles[categoria.id] || (nombres[categoria.id] !== undefined && nombres[categoria.id] !== categoria.nombre)) && (
                   <button
                     onClick={() => handleSave(categoria.id)}
-                    disabled={uploadingId === categoria.id}
+                    disabled={uploadingId !== null || !(nombres[categoria.id] ?? categoria.nombre).trim()}
                     className="w-full py-2 bg-white text-black text-sm font-bold rounded-xl hover:bg-gray-200 transition-colors disabled:opacity-50"
                   >
                     {uploadingId === categoria.id ? 'Guardando...' : 'Guardar Cambios'}

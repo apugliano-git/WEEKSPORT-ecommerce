@@ -62,7 +62,10 @@ CREATE TABLE public.productos (
     genero public.genero_producto DEFAULT 'Unisex'::public.genero_producto NOT NULL,
     tipo_talle public.tipo_talle DEFAULT 'estandar'::public.tipo_talle NOT NULL,
     precio_promocional numeric,
-    promocion_sin_precio_anterior boolean DEFAULT false NOT NULL
+    promocion_sin_precio_anterior boolean DEFAULT false NOT NULL,
+    en_oferta boolean DEFAULT false NOT NULL,
+    CONSTRAINT productos_oferta_sin_precio_promocional
+        CHECK (NOT en_oferta OR precio_promocional IS NULL)
 );
 
 CREATE TABLE public.talles_por_tipo (

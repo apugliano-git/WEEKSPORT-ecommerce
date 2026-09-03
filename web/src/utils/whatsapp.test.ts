@@ -29,6 +29,20 @@ const cart: CartItem[] = [{
 describe('procesarCheckoutWhatsApp', () => {
   afterEach(() => vi.unstubAllGlobals())
 
+  it('Oferta conserva los distintos precios de variantes del mismo producto', () => {
+    let openedUrl = ''
+    vi.stubGlobal('window', { open: (url: string) => { openedUrl = url } })
+    const producto = { ...cart[0].producto, en_oferta: true, precio_promocional: null }
+    procesarCheckoutWhatsApp('Ana', [
+      { ...cart[0], producto, cantidad: 2 },
+      { ...cart[0], producto, variante_id: 'variante-2', variante: { ...cart[0].variante, id: 'variante-2', color: 'Algodón', precio: 1500 } },
+    ], '5491155551234')
+    const message = new URL(openedUrl).searchParams.get('text')!
+    expect(message).toContain('Color: Negro) x2 - $\u00a02.000,00')
+    expect(message).toContain('Color: Algodón) x1 - $\u00a01.500,00')
+    expect(message).toContain('Total estimado: $\u00a03.500,00')
+  })
+
   it.each([null, 0, -1, NaN, Infinity])('usa el precio base si no hay un precio promocional válido: %s', (precio) => {
     let openedUrl = ''
     vi.stubGlobal('window', { open: (url: string) => { openedUrl = url } })

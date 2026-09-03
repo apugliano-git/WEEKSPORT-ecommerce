@@ -20,7 +20,7 @@ export function CatalogClient({ productos, activeCategoryId = null }: CatalogCli
     
     if (activeCategoryId) {
       if (activeCategoryId === 'promociones') {
-        result = result.filter(p => p.precio_promocional && p.precio_promocional > 0);
+        result = result.filter(p => p.en_oferta || (p.precio_promocional && p.precio_promocional > 0));
       } else {
         result = result.filter(p => p.categoria_id === activeCategoryId);
       }

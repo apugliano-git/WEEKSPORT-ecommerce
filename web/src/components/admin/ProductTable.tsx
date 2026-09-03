@@ -5,7 +5,7 @@
 import React, { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Producto, Categoria, VarianteStock } from '@/types'
-import { actualizarProducto, setPromocion, clearPromocion } from '@/lib/productoService'
+import { actualizarProducto, setPromocion, clearPromocion, setOferta } from '@/lib/productoService'
 import { actualizarVariante, eliminarVariante } from '@/lib/variantesService'
 import { subirImagenProducto } from '@/lib/inventarioService'
 import { Switch, BottomSheet, Badge, Button } from '@/components/admin/ui'
@@ -344,12 +344,12 @@ function ProductRow({
             <button
               onClick={() => onPromo(product)}
               className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-colors border whitespace-nowrap ${
-                product.precio_promocional
+                product.en_oferta || product.precio_promocional
                   ? 'bg-[#F400A1]/10 border-[#F400A1]/30 text-[#F400A1] hover:bg-[#F400A1]/20'
                   : 'bg-zinc-800 border-zinc-700 text-gray-300 hover:bg-zinc-700'
               }`}
             >
-              {product.precio_promocional ? (product.promocion_sin_precio_anterior ? '🏷 Promoción' : '🏷 Descuento') : 'Promoción'}
+              {product.en_oferta ? '🏷 Oferta' : product.precio_promocional ? (product.promocion_sin_precio_anterior ? '🏷 Promoción' : '🏷 Descuento') : 'Promoción'}
             </button>
           </div>
         </td>
@@ -618,7 +618,7 @@ function MobileProductSheet({
       <div className="flex flex-col gap-2 pt-2 border-t border-white/5 mt-2">
         <button onClick={() => { onClose(); onPromo(); }}
           className="px-4 py-3 text-sm font-bold text-[#F400A1] border border-[#F400A1]/30 rounded-xl">
-          Promoción / descuento
+          Ofertas y promociones
         </button>
         <button
           onClick={() => { onClose(); onEditProduct(); }}
@@ -751,6 +751,15 @@ export function ProductTable({ productos, categorias, tallesPorTipo }: ProductTa
     if (!promoProduct) return;
     setPromoStatus('saving');
     const res = await clearPromocion(promoProduct.id);
+    if (res.status === 'success') { setPromoProduct(null); router.refresh(); }
+    else { setPromoStatus('error'); setPromoError(res.message); }
+  };
+
+  const handleToggleOferta = async (activa: boolean) => {
+    if (!promoProduct) return;
+    setPromoStatus('saving');
+    setPromoError('');
+    const res = await setOferta(promoProduct.id, activa);
     if (res.status === 'success') { setPromoProduct(null); router.refresh(); }
     else { setPromoStatus('error'); setPromoError(res.message); }
   };
@@ -928,7 +937,7 @@ export function ProductTable({ productos, categorias, tallesPorTipo }: ProductTa
           <div className="bg-[#1A1A20] w-full max-w-md max-h-[90dvh] overflow-y-auto rounded-2xl border border-white/10 shadow-2xl flex flex-col animate-fadeIn">
             <div className="p-6 border-b border-white/5 flex justify-between items-center">
               <div>
-                <h3 id="promo-title" className="text-xl font-bold text-white">Promoción o descuento</h3>
+                <h3 id="promo-title" className="text-xl font-bold text-white">Ofertas y promociones</h3>
                 <p className="text-sm text-gray-500 mt-0.5 truncate max-w-[280px]">{promoProduct.nombre}</p>
               </div>
               <button aria-label="Cerrar promoción" disabled={promoStatus === 'saving'} onClick={() => setPromoProduct(null)} className="text-gray-400 hover:text-white transition-colors">
@@ -937,6 +946,17 @@ export function ProductTable({ productos, categorias, tallesPorTipo }: ProductTa
             </div>
 
             <div className="p-6 flex flex-col gap-5">
+              <div className="p-3 rounded-xl bg-[#F400A1]/5 border border-[#F400A1]/20">
+                <label className="flex items-center justify-between gap-3 font-bold text-white cursor-pointer">
+                  Oferta
+                  <Switch checked={!!promoProduct.en_oferta} onChange={handleToggleOferta} disabled={promoStatus === 'saving'} />
+                </label>
+                <p className="text-xs text-gray-400 mt-2">
+                  Sólo una etiqueta: oculta el precio en la tarjeta y conserva los precios de cada variante dentro del producto.
+                  Se guarda al cambiar el interruptor. Activarla quita cualquier descuento o promoción de precio.
+                </p>
+              </div>
+              {!promoProduct.en_oferta && <>
               <div>
                 <label htmlFor="promo-mode" className="block text-sm font-medium text-gray-400 mb-2">Tipo</label>
                 <select id="promo-mode" value={promoSinPrecioAnterior ? 'promocion' : 'descuento'}
@@ -979,6 +999,7 @@ export function ProductTable({ productos, categorias, tallesPorTipo }: ProductTa
                   ? 'Sólo se mostrará este precio con la etiqueta Promoción. No necesitás indicar un precio anterior.'
                   : 'Debe ser menor al precio base de las variantes. Ese precio anterior se verá tachado, como hasta ahora.'}</p>
               </div>
+              </>}
 
               {promoError && (
                 <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-sm text-red-400">{promoError}</div>
@@ -1008,13 +1029,13 @@ export function ProductTable({ productos, categorias, tallesPorTipo }: ProductTa
                 <button onClick={() => setPromoProduct(null)} disabled={promoStatus === 'saving'} className="px-5 py-2.5 text-sm font-bold text-gray-300 hover:text-white transition-colors disabled:opacity-50">
                   Cancelar
                 </button>
-                <button
+                {!promoProduct.en_oferta && <button
                   onClick={handleSavePromo}
                   disabled={promoStatus === 'saving' || !promoInput}
                   className="px-5 py-2.5 bg-[#F400A1] hover:bg-[#D000A0] text-white text-sm font-bold rounded-xl shadow-lg shadow-[#F400A1]/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {promoStatus === 'saving' ? 'Guardando...' : promoSinPrecioAnterior ? 'Aplicar promoción' : 'Aplicar descuento'}
-                </button>
+                </button>}
               </div>
             </div>
           </div>

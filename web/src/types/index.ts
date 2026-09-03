@@ -26,6 +26,7 @@ export interface Producto {
   tipo_talle: string;
   precio_promocional?: number | null;
   promocion_sin_precio_anterior?: boolean;
+  en_oferta?: boolean;
   created_at: string;
   variantes_stock?: VarianteStock[];
 }
