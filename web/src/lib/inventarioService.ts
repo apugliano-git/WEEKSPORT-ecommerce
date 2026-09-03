@@ -29,13 +29,19 @@ export async function actualizarStockVariante(id: string, nuevoStock: number): P
       return { status: 'error', message: 'El stock no puede ser negativo.' };
     }
 
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('variantes_stock')
       .update({ cantidad: nuevoStock })
-      .eq('id', id);
+      .eq('id', id)
+      .select('id, cantidad')
+      .single();
 
     if (error) {
       return { status: 'error', message: error.message };
+    }
+
+    if (data.cantidad !== nuevoStock) {
+      return { status: 'error', message: 'Supabase no confirmó el stock solicitado.' };
     }
 
     return { status: 'success', message: 'Stock actualizado con éxito.' };
@@ -89,7 +95,9 @@ export async function desactivarProducto(productoId: string): Promise<ApiRespons
     const { error } = await supabase
       .from('productos')
       .update({ activo: false })
-      .eq('id', productoId);
+      .eq('id', productoId)
+      .select('id')
+      .single();
 
     if (error) {
       return { status: 'error', message: `Base de datos rechazó la baja lógica: ${error.message}` };

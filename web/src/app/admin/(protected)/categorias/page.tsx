@@ -88,7 +88,9 @@ export default function CategoriasPage() {
     const { error } = await supabase
       .from('categorias')
       .update({ imagen_url: res.url })
-      .eq('id', categoryId);
+      .eq('id', categoryId)
+      .select('id')
+      .single();
 
     if (error) {
       setMensaje({ tipo: 'error', texto: 'Error al guardar la URL en la base de datos: ' + error.message });

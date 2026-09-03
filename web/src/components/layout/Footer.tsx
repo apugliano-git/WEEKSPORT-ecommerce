@@ -1,10 +1,9 @@
 import React from 'react'
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase/server'
+import { getSiteConfig } from '@/lib/siteConfig'
 
 export async function Footer() {
-  const supabase = await createClient();
-  const { data: config } = await supabase.from('configuracion_sitio').select('*').eq('id', 1).single();
+  const config = await getSiteConfig();
 
   const envio_gratis_texto = config?.envio_gratis_texto || 'Envío gratis hasta 3km del local';
   const medios_pago_texto = config?.medios_pago_texto || 'Efectivo, transferencia, tarjeta de débito y crédito';

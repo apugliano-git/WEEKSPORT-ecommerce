@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { crearArticuloCompleto, subirImagenProducto, obtenerTallesPorTipo } from '@/lib/inventarioService';
 import { createClient } from '@/lib/supabase/client';
+import { resetSizesAfterCreate } from '@/lib/inventoryForm';
 
 // Normaliza un nombre de color: primera letra mayúscula, resto minúsculas
 function capitalizarColor(s: string): string {
@@ -31,15 +32,15 @@ export default function NuevoArticuloPage() {
   const [cantidadesPorTalle, setCantidadesPorTalle] = useState<Record<string, number>>({});
 
   useEffect(() => {
+    let cancelled = false;
     const fetchTalles = async () => {
       const talles = await obtenerTallesPorTipo(tipoTalle);
+      if (cancelled) return;
       setTallesDisponibles(talles);
-      
-      const nuevasCantidades: Record<string, number> = {};
-      talles.forEach(t => nuevasCantidades[t] = 0);
-      setCantidadesPorTalle(nuevasCantidades);
+      setCantidadesPorTalle(Object.fromEntries(talles.map(talle => [talle, 0])));
     };
-    fetchTalles();
+    void fetchTalles();
+    return () => { cancelled = true; };
   }, [tipoTalle]);
 
   // Estado de colores
@@ -105,9 +106,6 @@ export default function NuevoArticuloPage() {
       e.preventDefault();
       agregarColor();
     }
-    if (e.key === 'Backspace' && inputColor === '' && colores.length > 0) {
-      eliminarColor(colores.length - 1);
-    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -125,16 +123,15 @@ export default function NuevoArticuloPage() {
     const urlsImagenes: string[] = [];
     if (archivosImagenes.length > 0) {
       setIsUploading(true);
-      for (const file of archivosImagenes) {
-        const res = await subirImagenProducto(file);
-        if (res.error) {
-          setMensaje({ tipo: 'error', texto: res.error });
-          setIsLoading(false);
-          setIsUploading(false);
-          return;
-        }
-        if (res.url) urlsImagenes.push(res.url);
+      const uploads = await Promise.all(archivosImagenes.map(subirImagenProducto));
+      const uploadError = uploads.find(upload => upload.error);
+      if (uploadError?.error) {
+        setMensaje({ tipo: 'error', texto: uploadError.error });
+        setIsLoading(false);
+        setIsUploading(false);
+        return;
       }
+      urlsImagenes.push(...uploads.flatMap(upload => upload.url ? [upload.url] : []));
       setIsUploading(false);
     }
 
@@ -159,7 +156,10 @@ export default function NuevoArticuloPage() {
       setDescripcion('');
       setCategoriaId('');
       setGenero('Unisex');
+      const resetSizes = resetSizesAfterCreate(tipoTalle, tallesDisponibles);
       setTipoTalle('estandar');
+      setTallesDisponibles(resetSizes.sizes);
+      setCantidadesPorTalle(resetSizes.quantities);
       setPrecioInicial('');
       setArchivosImagenes([]);
       setColores([]);
@@ -172,13 +172,7 @@ export default function NuevoArticuloPage() {
   };
 
   // Preview: talles que se generarán según el esquema
-  const talesPorTipo: Record<string, string[]> = {
-    estandar: ['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL', '4XL'],
-    unico: ['Único'],
-    tops: ['85', '90', '95', '100', '105', '110', '115', '120+'],
-    sin_talle: ['N/A'],
-  };
-  const tallesPreview = talesPorTipo[tipoTalle] || [];
+  const tallesPreview = tallesDisponibles;
   const coloresEfectivos = colores.length > 0 ? colores : ['Sin color'];
   const totalVariantes = tallesPreview.length * coloresEfectivos.length;
 
@@ -344,7 +338,11 @@ export default function NuevoArticuloPage() {
                   <select 
                     className="w-full p-3 bg-zinc-950 border border-zinc-800 rounded-xl focus:ring-1 focus:ring-[#F400A1] focus:border-[#F400A1] outline-none transition-colors"
                     value={tipoTalle}
-                    onChange={(e) => setTipoTalle(e.target.value)}
+                    onChange={(e) => {
+                      setTipoTalle(e.target.value);
+                      setTallesDisponibles([]);
+                      setCantidadesPorTalle({});
+                    }}
                   >
                     <option value="estandar">Estándar (XS a 4XL)</option>
                     <option value="unico">Único (Talle Único)</option>
@@ -436,6 +434,7 @@ export default function NuevoArticuloPage() {
                       <button
                         type="button"
                         onClick={() => eliminarColor(idx)}
+                        aria-label={`Eliminar color ${color}`}
                         className="text-zinc-500 hover:text-red-400 transition-colors ml-0.5"
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
@@ -468,7 +467,7 @@ export default function NuevoArticuloPage() {
               </div>
 
               <p className="text-[11px] text-zinc-600 mt-3">
-                Presioná <kbd className="px-1.5 py-0.5 bg-zinc-800 border border-zinc-700 rounded text-zinc-400 font-mono text-[10px]">Enter</kbd> para agregar · <kbd className="px-1.5 py-0.5 bg-zinc-800 border border-zinc-700 rounded text-zinc-400 font-mono text-[10px]">←</kbd> para eliminar el último
+                Presioná <kbd className="px-1.5 py-0.5 bg-zinc-800 border border-zinc-700 rounded text-zinc-400 font-mono text-[10px]">Enter</kbd> para agregar
               </p>
             </div>
           </div>

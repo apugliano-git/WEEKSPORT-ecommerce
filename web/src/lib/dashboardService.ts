@@ -18,21 +18,15 @@ interface ProductStockRow {
 export async function obtenerMetricasInventario(): Promise<MetricasInventario> {
   const supabase = await createClient();
   
-  // 1. Productos activos
-  const { count: productosActivos } = await supabase
-    .from('productos')
-    .select('*', { count: 'exact', head: true })
-    .eq('activo', true);
+  const startOfMonth = new Date();
+  startOfMonth.setDate(1);
+  startOfMonth.setHours(0, 0, 0, 0);
 
-  // 2 & 3. Productos sin stock y Variantes críticas
-  const { data: productos } = await supabase
-    .from('productos')
-    .select(`
-      id,
-      variantes_stock (
-        cantidad
-      )
-    `);
+  const [{ count: productosActivos }, { data: productos }, { count: ventasDelMes }] = await Promise.all([
+    supabase.from('productos').select('*', { count: 'exact', head: true }).eq('activo', true),
+    supabase.from('productos').select('id, variantes_stock (cantidad)'),
+    supabase.from('ventas_historico').select('*', { count: 'exact', head: true }).gte('created_at', startOfMonth.toISOString()),
+  ]);
 
   let productosSinStock = 0;
   let variantesCriticas = 0;
@@ -53,16 +47,6 @@ export async function obtenerMetricasInventario(): Promise<MetricasInventario> {
       });
     });
   }
-
-  // 4. Ventas del mes
-  const startOfMonth = new Date();
-  startOfMonth.setDate(1);
-  startOfMonth.setHours(0, 0, 0, 0);
-
-  const { count: ventasDelMes } = await supabase
-    .from('ventas_historico')
-    .select('*', { count: 'exact', head: true })
-    .gte('created_at', startOfMonth.toISOString());
 
   return {
     productosActivos: productosActivos || 0,

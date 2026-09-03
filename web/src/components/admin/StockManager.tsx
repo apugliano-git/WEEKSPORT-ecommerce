@@ -6,7 +6,7 @@ import { Producto, Categoria, VarianteStock } from '@/types'
 import { actualizarStockVariante, agregarColorAProducto, actualizarPrecioColor } from '@/lib/inventarioService'
 import { eliminarProducto } from '@/lib/productoService'
 import { TableShell, Select, Input, Badge, Button, BottomSheet, Switch } from '@/components/admin/ui'
-import { groupVariantsByColor, sortVariants, type VariantColorGroup } from './variantUtils'
+import { groupVariantsByColor, sortVariants, withVariantStock, type VariantColorGroup } from './variantUtils'
 
 // Normaliza un nombre de color: primera letra mayúscula, resto minúsculas
 function capitalizarColor(s: string): string {
@@ -23,13 +23,12 @@ interface StockManagerProps {
   initialSearch?: string;
 }
 
-function StockVariantRow({ variante, hideColor = false }: { variante: VarianteStock, hideColor?: boolean }) {
-  const [currentStock, setCurrentStock] = useState(variante.cantidad);
+function StockVariantRow({ variante, hideColor = false, onSaved }: { variante: VarianteStock, hideColor?: boolean, onSaved: (id: string, stock: number) => void }) {
   const [inputValue, setInputValue] = useState<number | ''>(variante.cantidad);
   const [status, setStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState('');
 
-  const hasChanged = inputValue !== currentStock;
+  const hasChanged = inputValue !== variante.cantidad;
   const isInvalid = typeof inputValue === 'number' && inputValue < 0 || inputValue === '';
   const canSave = hasChanged && !isInvalid && status !== 'saving';
 
@@ -43,8 +42,8 @@ function StockVariantRow({ variante, hideColor = false }: { variante: VarianteSt
     
     if (res.status === 'success') {
       setStatus('success');
-      setCurrentStock(numericValue);
       setInputValue(numericValue);
+      onSaved(variante.id, numericValue);
       setTimeout(() => setStatus('idle'), 3000);
     } else {
       setStatus('error');
@@ -52,8 +51,8 @@ function StockVariantRow({ variante, hideColor = false }: { variante: VarianteSt
     }
   }
 
-  const isCritical = currentStock < 3;
-  const isOutOfStock = currentStock === 0;
+  const isCritical = variante.cantidad < 3;
+  const isOutOfStock = variante.cantidad === 0;
 
   return (
     <tr className={`hover:bg-white/[0.02] transition-colors ${isCritical ? 'bg-red-500/[0.02]' : ''}`}>
@@ -61,7 +60,7 @@ function StockVariantRow({ variante, hideColor = false }: { variante: VarianteSt
       {!hideColor && <td className="px-4 py-3 text-gray-300">{variante.color}</td>}
       <td className="px-4 py-3 text-center">
         <Badge variant={isOutOfStock ? 'danger' : isCritical ? 'warning' : 'success'} pulse={isCritical}>
-          {currentStock} uds
+          {variante.cantidad} uds
         </Badge>
       </td>
       <td className="px-4 py-3 text-center">
@@ -95,7 +94,7 @@ function StockVariantRow({ variante, hideColor = false }: { variante: VarianteSt
   );
 }
 
-function MobileVariantAdjust({ variante, onBack }: { variante: VarianteStock, onBack: () => void }) {
+function MobileVariantAdjust({ variante, onBack, onSaved }: { variante: VarianteStock, onBack: () => void, onSaved: (id: string, stock: number) => void }) {
   const [ajuste, setAjuste] = useState<number>(0);
   const [currentStock, setCurrentStock] = useState(variante.cantidad);
   const [status, setStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
@@ -116,7 +115,7 @@ function MobileVariantAdjust({ variante, onBack }: { variante: VarianteStock, on
       setStatus('success');
       setCurrentStock(finalStock);
       setTimeout(() => {
-        onBack();
+        onSaved(variante.id, finalStock);
       }, 1000);
     } else {
       setStatus('error');
@@ -147,6 +146,7 @@ function MobileVariantAdjust({ variante, onBack }: { variante: VarianteStock, on
         <div className="flex items-center justify-center gap-8 w-full">
           <button 
             onClick={() => setAjuste(a => a - 1)}
+            aria-label="Reducir ajuste de stock"
             className="w-14 h-14 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white active:bg-white/10 transition-colors"
           >
             <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/></svg>
@@ -160,6 +160,7 @@ function MobileVariantAdjust({ variante, onBack }: { variante: VarianteStock, on
 
           <button 
             onClick={() => setAjuste(a => a + 1)}
+            aria-label="Aumentar ajuste de stock"
             className="w-14 h-14 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white active:bg-white/10 transition-colors"
           >
             <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
@@ -402,13 +403,13 @@ function MobileColorGroupBlock({ productoId, grupo, onRefresh, onSelectVariant }
   );
 }
 
-function MobileProductSheetContent({ product, onDelete }: { product: Producto, onDelete: () => void }) {
+function MobileProductSheetContent({ product, onDelete, onStockSaved }: { product: Producto, onDelete: () => void, onStockSaved: (id: string, stock: number) => void }) {
   const router = useRouter();
   const [selectedVariant, setSelectedVariant] = useState<VarianteStock | null>(null);
   const [showAgregarColor, setShowAgregarColor] = useState(false);
 
   if (selectedVariant) {
-    return <MobileVariantAdjust variante={selectedVariant} onBack={() => setSelectedVariant(null)} />;
+    return <MobileVariantAdjust variante={selectedVariant} onBack={() => setSelectedVariant(null)} onSaved={(id, stock) => { onStockSaved(id, stock); setSelectedVariant(null); }} />;
   }
 
   return (
@@ -458,7 +459,7 @@ function MobileProductSheetContent({ product, onDelete }: { product: Producto, o
   )
 }
 
-function ColorGroupBlock({ productoId, grupo, onRefresh }: { productoId: string, grupo: VariantColorGroup, onRefresh: () => void }) {
+function ColorGroupBlock({ productoId, grupo, onRefresh, onStockSaved }: { productoId: string, grupo: VariantColorGroup, onRefresh: () => void, onStockSaved: (id: string, stock: number) => void }) {
   const [isOpen, setIsOpen] = useState(false);
   const [isEditingPrice, setIsEditingPrice] = useState(false);
   const [newPrice, setNewPrice] = useState(grupo.precio);
@@ -517,7 +518,7 @@ function ColorGroupBlock({ productoId, grupo, onRefresh }: { productoId: string,
             </thead>
             <tbody className="divide-y divide-white/5 text-sm">
               {grupo.variantes.map((v) => (
-                <StockVariantRow key={v.id} variante={v} hideColor={true} />
+                <StockVariantRow key={v.id} variante={v} hideColor={true} onSaved={onStockSaved} />
               ))}
             </tbody>
           </table>
@@ -527,7 +528,7 @@ function ColorGroupBlock({ productoId, grupo, onRefresh }: { productoId: string,
   );
 }
 
-function StockProductRow({ product, categoryMap, onDelete }: { product: Producto, categoryMap: Record<string, string>, onDelete: () => void }) {
+function StockProductRow({ product, categoryMap, onDelete, onStockSaved }: { product: Producto, categoryMap: Record<string, string>, onDelete: () => void, onStockSaved: (id: string, stock: number) => void }) {
   const router = useRouter();
   const [isExpanded, setIsExpanded] = useState(false);
   const [showAgregarColor, setShowAgregarColor] = useState(false);
@@ -577,8 +578,8 @@ function StockProductRow({ product, categoryMap, onDelete }: { product: Producto
                 <p className="text-sm text-gray-500 text-center py-2">Este producto no tiene variantes.</p>
               ) : (
                 <div className="flex flex-col gap-2">
-          {groupVariantsByColor(variants).map(grupo => (
-                    <ColorGroupBlock key={grupo.color} productoId={product.id} grupo={grupo} onRefresh={() => router.refresh()} />
+                  {groupVariantsByColor(variants).map(grupo => (
+                    <ColorGroupBlock key={grupo.color} productoId={product.id} grupo={grupo} onRefresh={() => router.refresh()} onStockSaved={onStockSaved} />
                   ))}
                   {showAgregarColor && (
                     <div className="bg-[#1A1A20] rounded-xl border border-emerald-500/20 overflow-hidden shadow-sm">
@@ -627,15 +628,25 @@ function StockProductRow({ product, categoryMap, onDelete }: { product: Producto
 
 export function StockManager({ productos, categorias, initialSearch = '' }: StockManagerProps) {
   const router = useRouter()
+  const [inventory, setInventory] = useState({ source: productos, value: productos })
   const [searchTerm, setSearchTerm] = useState(initialSearch)
   const [selectedCategoryId, setSelectedCategoryId] = useState('')
-  const [selectedProduct, setSelectedProduct] = useState<Producto | null>(null)
+  const [selectedProductId, setSelectedProductId] = useState<string | null>(null)
   const [hideOutOfStock, setHideOutOfStock] = useState(false)
 
   const [deletingProduct, setDeletingProduct] = useState<Producto | null>(null)
   const [deleteStep, setDeleteStep] = useState<1 | 2>(1)
   const [deleteStatus, setDeleteStatus] = useState<'idle' | 'deleting' | 'error'>('idle')
   const [deleteError, setDeleteError] = useState('')
+
+  const localProducts = inventory.source === productos ? inventory.value : productos
+  const selectedProduct = localProducts.find(product => product.id === selectedProductId) ?? null
+  const handleStockSaved = (variantId: string, stock: number) => {
+    setInventory(current => ({
+      source: productos,
+      value: withVariantStock(current.source === productos ? current.value : productos, variantId, stock),
+    }))
+  }
 
   const handleDeleteInitiate = (product: Producto) => {
     setDeletingProduct(product);
@@ -651,7 +662,7 @@ export function StockManager({ productos, categorias, initialSearch = '' }: Stoc
     const res = await eliminarProducto(deletingProduct.id);
     if (res.status === 'success') {
       setDeletingProduct(null);
-      setSelectedProduct(null);
+      setSelectedProductId(null);
       router.refresh();
     } else {
       setDeleteStatus('error');
@@ -667,7 +678,7 @@ export function StockManager({ productos, categorias, initialSearch = '' }: Stoc
   }, [categorias]);
 
   const filteredProducts = React.useMemo(() => {
-    let result = productos;
+    let result = localProducts;
 
     if (hideOutOfStock) {
       result = result.filter(prod => {
@@ -696,7 +707,7 @@ export function StockManager({ productos, categorias, initialSearch = '' }: Stoc
 
       return matchProduct || matchVariant;
     });
-  }, [productos, searchTerm, selectedCategoryId, categoryMap, hideOutOfStock]);
+  }, [localProducts, searchTerm, selectedCategoryId, categoryMap, hideOutOfStock]);
 
   const columns = [
     { label: 'Producto' },
@@ -762,7 +773,7 @@ export function StockManager({ productos, categorias, initialSearch = '' }: Stoc
           emptyMessage="No se encontraron productos que coincidan con la búsqueda."
         >
           {filteredProducts.map(prod => (
-            <StockProductRow key={prod.id} product={prod} categoryMap={categoryMap} onDelete={() => handleDeleteInitiate(prod)} />
+            <StockProductRow key={prod.id} product={prod} categoryMap={categoryMap} onDelete={() => handleDeleteInitiate(prod)} onStockSaved={handleStockSaved} />
           ))}
         </TableShell>
       </div>
@@ -796,7 +807,7 @@ export function StockManager({ productos, categorias, initialSearch = '' }: Stoc
               return (
                 <button
                   key={prod.id}
-                  onClick={() => setSelectedProduct(prod)}
+                  onClick={() => setSelectedProductId(prod.id)}
                   className="flex items-center justify-between p-4 bg-[#1A1A20] border border-white/5 rounded-2xl shadow-lg hover:border-white/10 active:bg-white/5 transition-colors text-left"
                 >
                   <span className="font-bold text-white text-sm">{prod.nombre}</span>
@@ -813,10 +824,10 @@ export function StockManager({ productos, categorias, initialSearch = '' }: Stoc
       {/* Mobile BottomSheet */}
       <BottomSheet
         isOpen={!!selectedProduct}
-        onClose={() => setSelectedProduct(null)}
+        onClose={() => setSelectedProductId(null)}
         title={selectedProduct?.nombre || ''}
       >
-        {selectedProduct && <MobileProductSheetContent product={selectedProduct} onDelete={() => handleDeleteInitiate(selectedProduct)} />}
+        {selectedProduct && <MobileProductSheetContent product={selectedProduct} onDelete={() => handleDeleteInitiate(selectedProduct)} onStockSaved={handleStockSaved} />}
       </BottomSheet>
 
       {/* ─── Modal Eliminación (2-step) ───────────────────────── */}
@@ -841,7 +852,7 @@ export function StockManager({ productos, categorias, initialSearch = '' }: Stoc
                   Estás a punto de eliminar <strong>{deletingProduct.nombre}</strong>.
                 </p>
                 <p className="text-sm text-gray-400 mt-2">
-                  Esto borrará también todas sus variantes, fotos y precios. Esta acción <span className="font-bold text-white">no se puede deshacer</span>.
+                  Esto borrará también todas sus variantes, incluidos precios y stock. Esta acción <span className="font-bold text-white">no se puede deshacer</span>.
                 </p>
               </div>
 

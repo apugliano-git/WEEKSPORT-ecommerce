@@ -23,7 +23,9 @@ export async function actualizarProducto(productoId: string, datos: DatosProduct
     const { error } = await supabase
       .from('productos')
       .update(datos)
-      .eq('id', productoId);
+      .eq('id', productoId)
+      .select('id')
+      .single();
 
     if (error) {
       return { status: 'error', message: error.message };
@@ -40,7 +42,9 @@ export async function setPromocion(productoId: string, precio_promocional: numbe
     const { error } = await supabase
       .from('productos')
       .update({ precio_promocional })
-      .eq('id', productoId);
+      .eq('id', productoId)
+      .select('id')
+      .single();
 
     if (error) return { status: 'error', message: error.message };
     return { status: 'success', message: 'Promoción aplicada.' };
@@ -54,7 +58,9 @@ export async function clearPromocion(productoId: string): Promise<ApiResponse> {
     const { error } = await supabase
       .from('productos')
       .update({ precio_promocional: null })
-      .eq('id', productoId);
+      .eq('id', productoId)
+      .select('id')
+      .single();
 
     if (error) return { status: 'error', message: error.message };
     return { status: 'success', message: 'Promoción eliminada.' };
@@ -68,7 +74,9 @@ export async function eliminarProducto(productoId: string): Promise<ApiResponse>
     const { error } = await supabase
       .from('productos')
       .delete()
-      .eq('id', productoId);
+      .eq('id', productoId)
+      .select('id')
+      .single();
 
     if (error) return { status: 'error', message: error.message };
     return { status: 'success', message: 'Producto eliminado correctamente.' };

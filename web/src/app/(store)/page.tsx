@@ -1,38 +1,27 @@
 import { StoreClient } from "@/components/catalog/StoreClient";
 import { createClient } from "@/lib/supabase/server";
 import { filterVisibleInStock, visibleVariants } from "@/lib/catalog/relatedProducts";
+import { getSiteConfig } from "@/lib/siteConfig";
 import { Suspense } from "react";
 export const revalidate = 0; // Evitar caché estática para reflejar cambios en tiempo real
 
 export default async function HomePage() {
   const supabase = await createClient();
-  // 0. Obtener Configuración
-  const { data: config } = await supabase
-    .from('configuracion_sitio')
-    .select('*')
-    .eq('id', 1)
-    .single();
-
-  // 1. Obtener Categorías
-  const { data: categoriasData } = await supabase
-    .from('categorias')
-    .select('id, nombre, imagen_url');
+  const [config, { data: categoriasData }, { data: productosData }] = await Promise.all([
+    getSiteConfig(),
+    supabase.from('categorias').select('id, nombre, imagen_url'),
+    supabase
+      .from('productos')
+      .select('*, variantes_stock (*)')
+      .eq('activo', true)
+      .order('created_at', { ascending: false }),
+  ]);
 
   const categorias = (categoriasData || []).map(cat => ({
     id: cat.id,
-    name: cat.nombre, // Mapeo temporal de 'nombre' a 'name' para mantener compatibilidad con el front
+    name: cat.nombre,
     imagen_url: cat.imagen_url
   }));
-
-  // 2. Obtener Productos Activos con sus variantes
-  const { data: productosData } = await supabase
-    .from('productos')
-    .select(`
-      *,
-      variantes_stock (*)
-    `)
-    .eq('activo', true)
-    .order('created_at', { ascending: false });
 
   const productosBrutos = productosData || [];
   

@@ -1,4 +1,4 @@
-import type { VarianteStock } from '@/types'
+import type { Producto, VarianteStock } from '@/types'
 
 export const DEFAULT_SIZE_ORDER = [
   'XXS', 'XS', 'S', 'M', 'L', 'XL', 'XXL', '2XL', '3XL', '4XL', '5XL',
@@ -9,6 +9,15 @@ export interface VariantColorGroup {
   color: string
   precio: number
   variantes: VarianteStock[]
+}
+
+export function withVariantStock(products: Producto[], variantId: string, cantidad: number): Producto[] {
+  return products.map(product => ({
+    ...product,
+    variantes_stock: product.variantes_stock?.map(variant =>
+      variant.id === variantId ? { ...variant, cantidad } : variant
+    ),
+  }))
 }
 
 export function sortVariants(variants: VarianteStock[], sizeOrder: string[] = DEFAULT_SIZE_ORDER): VarianteStock[] {

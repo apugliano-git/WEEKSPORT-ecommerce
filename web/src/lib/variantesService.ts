@@ -25,7 +25,9 @@ export async function actualizarVariante(
     const { error } = await supabase
       .from('variantes_stock')
       .update(datos)
-      .eq('id', varianteId);
+      .eq('id', varianteId)
+      .select('id')
+      .single();
 
     if (error) {
       if (error.code === DUPLICATE_KEY_CODE) {
@@ -45,7 +47,9 @@ export async function eliminarVariante(varianteId: string): Promise<ApiResponse>
     const { error } = await supabase
       .from('variantes_stock')
       .delete()
-      .eq('id', varianteId);
+      .eq('id', varianteId)
+      .select('id')
+      .single();
 
     if (error) {
       return { status: 'error', message: error.message };

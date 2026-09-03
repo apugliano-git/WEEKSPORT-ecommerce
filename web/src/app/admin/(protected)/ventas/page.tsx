@@ -7,19 +7,15 @@ export const revalidate = 0; // Server Component dinámico
 export default async function AdminVentasPage() {
   const supabase = await createClient()
   
-  // Fetch de categorías
-  const { data: categoriasData } = await supabase.from('categorias').select('*')
-  const categorias = categoriasData || []
-
-  // Fetch de productos con join a variantes_stock
-  const { data: productosData } = await supabase
-    .from('productos')
-    .select(`
-      *,
-      variantes_stock (*)
-    `)
-    .order('created_at', { ascending: false })
+  const [{ data: categoriasData }, { data: productosData }] = await Promise.all([
+    supabase.from('categorias').select('*'),
+    supabase
+      .from('productos')
+      .select('*, variantes_stock (*)')
+      .order('created_at', { ascending: false }),
+  ])
   
+  const categorias = categoriasData || []
   const productos = productosData || []
 
   return (

@@ -155,7 +155,9 @@ export default function ConfiguracionPage() {
           hero_imagen_posicion_y_desktop: config.hero_slides[0]?.pos_y_desktop || 50,
           hero_imagen_posicion_y_mobile: config.hero_slides[0]?.pos_y_mobile || 50
         })
-        .eq('id', 1);
+        .eq('id', 1)
+        .select('id')
+        .single();
 
       if (error) {
         setMensaje({ tipo: 'error', texto: 'No se pudieron guardar los cambios: ' + error.message });

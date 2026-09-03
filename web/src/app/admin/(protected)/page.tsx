@@ -6,8 +6,10 @@ import { UltimasVentas } from '@/components/admin/UltimasVentas'
 export const revalidate = 0; // Server Component dinámico
 
 export default async function AdminDashboardPage() {
-  const metricas = await obtenerMetricasInventario();
-  const ventasRecientes = await obtenerVentasRecientes(5);
+  const [metricas, ventasRecientes] = await Promise.all([
+    obtenerMetricasInventario(),
+    obtenerVentasRecientes(5),
+  ]);
   return (
     <div className="space-y-10">
         
