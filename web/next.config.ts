@@ -1,19 +1,11 @@
 import type { NextConfig } from "next";
+import { buildContentSecurityPolicy } from "./src/lib/security/contentSecurityPolicy";
 
 const supabaseOrigin = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL!).origin;
-const supabaseWebSocketOrigin = supabaseOrigin.replace(/^https:/, 'wss:').replace(/^http:/, 'ws:');
-const contentSecurityPolicy = [
-  "default-src 'self'",
-  "script-src 'self' 'unsafe-inline'",
-  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-  "img-src 'self' blob: data: https:",
-  "font-src 'self' https://fonts.gstatic.com",
-  `connect-src 'self' ${supabaseOrigin} ${supabaseWebSocketOrigin}`,
-  "object-src 'none'",
-  "base-uri 'self'",
-  "form-action 'self'",
-  "frame-ancestors 'none'",
-].join('; ');
+const contentSecurityPolicy = buildContentSecurityPolicy(
+  process.env.NODE_ENV === 'development',
+  supabaseOrigin,
+);
 
 const nextConfig: NextConfig = {
   experimental: {
