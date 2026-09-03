@@ -31,8 +31,8 @@ export function ProductCard({ producto }: ProductCardProps) {
         
         {/* Badge Promoción */}
         {precioPromo && (
-          <div className="absolute top-2 left-2 bg-[#F400A1] text-white text-[9px] uppercase tracking-widest font-extrabold px-2 py-1 rounded-full shadow-lg shadow-[#F400A1]/40">
-            Oferta
+          <div className={`absolute top-2 left-2 text-white text-[9px] uppercase tracking-widest font-extrabold px-2 py-1 ${producto.promocion_sin_precio_anterior ? 'bg-[#1A1A2E] border border-[#F400A1] rounded-md' : 'bg-[#F400A1] rounded-full shadow-lg shadow-[#F400A1]/40'}`}>
+            {producto.promocion_sin_precio_anterior ? 'Promoción' : 'Descuento'}
           </div>
         )}
 
@@ -55,9 +55,9 @@ export function ProductCard({ producto }: ProductCardProps) {
               <span className="text-base font-bold font-display text-[#F400A1]">
                 {precioPromo.toLocaleString('es-AR', { style: 'currency', currency: 'ARS' })}
               </span>
-              <span className="text-xs text-gray-500 line-through leading-none">
+              {!producto.promocion_sin_precio_anterior && <span className="text-xs text-gray-500 line-through leading-none">
                 {precioBase.toLocaleString('es-AR', { style: 'currency', currency: 'ARS' })}
-              </span>
+              </span>}
             </div>
           ) : (
             <span className="text-base font-bold font-display text-[#F400A1]">

@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 import { CartItem, Producto, VarianteStock } from '@/types'
 import { parseStoredCart } from '@/lib/security/cart'
+import { cartItemSubtotal } from '@/utils/cartPricing'
 
 interface CartContextType {
   cart: CartItem[];
@@ -74,7 +75,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const clearCart = () => setCart([])
 
   const totalItems = cart.reduce((acc, item) => acc + item.cantidad, 0)
-  const totalPrice = cart.reduce((acc, item) => acc + (item.variante.precio * item.cantidad), 0)
+  const totalPrice = cart.reduce((acc, item) => acc + cartItemSubtotal(item), 0)
 
   const openDrawer = () => setIsDrawerOpen(true)
   const closeDrawer = () => setIsDrawerOpen(false)

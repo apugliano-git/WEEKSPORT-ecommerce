@@ -316,7 +316,7 @@ function ProductRow({
                 <span className="text-[#F400A1] font-bold text-sm">
                   {product.precio_promocional.toLocaleString('es-AR', { style: 'currency', currency: 'ARS' })}
                 </span>
-                <span className="text-gray-500 line-through text-xs">{priceDisplay}</span>
+                {!product.promocion_sin_precio_anterior && <span className="text-gray-500 line-through text-xs">{priceDisplay}</span>}
               </>
             ) : (
               <span>{priceDisplay}</span>
@@ -343,13 +343,13 @@ function ProductRow({
             </button>
             <button
               onClick={() => onPromo(product)}
-              className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-colors border ${
+              className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-colors border whitespace-nowrap ${
                 product.precio_promocional
                   ? 'bg-[#F400A1]/10 border-[#F400A1]/30 text-[#F400A1] hover:bg-[#F400A1]/20'
                   : 'bg-zinc-800 border-zinc-700 text-gray-300 hover:bg-zinc-700'
               }`}
             >
-              {product.precio_promocional ? '🏷 En oferta' : 'Promoción'}
+              {product.precio_promocional ? (product.promocion_sin_precio_anterior ? '🏷 Promoción' : '🏷 Descuento') : 'Promoción'}
             </button>
           </div>
         </td>
@@ -547,12 +547,14 @@ function MobileProductSheet({
   product,
   tallesPorTipo,
   onEditProduct,
+  onPromo,
   onClose,
   onRefresh,
 }: {
   product: Producto;
   tallesPorTipo: TallePorTipo[];
   onEditProduct: () => void;
+  onPromo: () => void;
   onClose: () => void;
   onRefresh: () => void;
 }) {
@@ -614,6 +616,10 @@ function MobileProductSheet({
 
       {/* Acciones del pie */}
       <div className="flex flex-col gap-2 pt-2 border-t border-white/5 mt-2">
+        <button onClick={() => { onClose(); onPromo(); }}
+          className="px-4 py-3 text-sm font-bold text-[#F400A1] border border-[#F400A1]/30 rounded-xl">
+          Promoción / descuento
+        </button>
         <button
           onClick={() => { onClose(); onEditProduct(); }}
           className="flex items-center justify-center gap-2 px-4 py-3 text-sm font-bold text-gray-300 border border-white/10 bg-white/5 hover:bg-white/10 rounded-xl transition-colors"
@@ -651,6 +657,7 @@ export function ProductTable({ productos, categorias, tallesPorTipo }: ProductTa
   const [selectedProductSheet, setSelectedProductSheet] = useState<Producto | null>(null)
   const [promoProduct, setPromoProduct] = useState<Producto | null>(null)
   const [promoInput, setPromoInput] = useState('')
+  const [promoSinPrecioAnterior, setPromoSinPrecioAnterior] = useState(false)
   const [promoStatus, setPromoStatus] = useState<'idle' | 'saving' | 'error'>('idle')
   const [promoError, setPromoError] = useState('')
 
@@ -719,22 +726,23 @@ export function ProductTable({ productos, categorias, tallesPorTipo }: ProductTa
   const handlePromo = (product: Producto) => {
     setPromoProduct(product);
     setPromoInput(product.precio_promocional ? String(product.precio_promocional) : '');
+    setPromoSinPrecioAnterior(product.promocion_sin_precio_anterior ?? false);
     setPromoStatus('idle');
     setPromoError('');
   };
 
   const handleSavePromo = async () => {
     if (!promoProduct) return;
-    const precio = parseFloat(promoInput);
+    const precio = Number(promoInput);
     const precioBase = Math.min(...(promoProduct.variantes_stock || []).map(v => v.precio).filter(p => p > 0));
-    if (isNaN(precio) || precio <= 0) {
+    if (!Number.isFinite(precio) || precio <= 0) {
       setPromoError('Ingresá un precio válido mayor a 0.'); return;
     }
-    if (precio >= precioBase) {
-      setPromoError(`El precio de oferta debe ser menor al precio base (${precioBase.toLocaleString('es-AR', { style: 'currency', currency: 'ARS' })}).`); return;
+    if (!promoSinPrecioAnterior && (!Number.isFinite(precioBase) || precio >= precioBase)) {
+      setPromoError('El descuento requiere un precio anterior mayor al precio final. Revisá los precios de las variantes.'); return;
     }
     setPromoStatus('saving');
-    const res = await setPromocion(promoProduct.id, precio);
+    const res = await setPromocion(promoProduct.id, precio, promoSinPrecioAnterior);
     if (res.status === 'success') { setPromoProduct(null); router.refresh(); }
     else { setPromoStatus('error'); setPromoError(res.message); }
   };
@@ -905,6 +913,7 @@ export function ProductTable({ productos, categorias, tallesPorTipo }: ProductTa
             tallesPorTipo={tallesPorTipo}
             onClose={() => setSelectedProductSheet(null)}
             onEditProduct={() => handleEdit(selectedProductSheet)}
+            onPromo={() => handlePromo(selectedProductSheet)}
             onRefresh={() => router.refresh()}
           />
         )}
@@ -915,37 +924,49 @@ export function ProductTable({ productos, categorias, tallesPorTipo }: ProductTa
 
       {/* ─── Modal Promoción ────────────────────────────────────── */}
       {promoProduct && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="bg-[#1A1A20] w-full max-w-md rounded-2xl border border-white/10 shadow-2xl overflow-hidden flex flex-col animate-fadeIn">
+        <div role="dialog" aria-modal="true" aria-labelledby="promo-title" className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-[#1A1A20] w-full max-w-md max-h-[90dvh] overflow-y-auto rounded-2xl border border-white/10 shadow-2xl flex flex-col animate-fadeIn">
             <div className="p-6 border-b border-white/5 flex justify-between items-center">
               <div>
-                <h3 className="text-xl font-bold text-white">Aplicar Promoción</h3>
+                <h3 id="promo-title" className="text-xl font-bold text-white">Promoción o descuento</h3>
                 <p className="text-sm text-gray-500 mt-0.5 truncate max-w-[280px]">{promoProduct.nombre}</p>
               </div>
-              <button onClick={() => setPromoProduct(null)} className="text-gray-400 hover:text-white transition-colors">
+              <button aria-label="Cerrar promoción" disabled={promoStatus === 'saving'} onClick={() => setPromoProduct(null)} className="text-gray-400 hover:text-white transition-colors">
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
               </button>
             </div>
 
             <div className="p-6 flex flex-col gap-5">
+              <div>
+                <label htmlFor="promo-mode" className="block text-sm font-medium text-gray-400 mb-2">Tipo</label>
+                <select id="promo-mode" value={promoSinPrecioAnterior ? 'promocion' : 'descuento'}
+                  disabled={promoStatus === 'saving'}
+                  onChange={e => { setPromoSinPrecioAnterior(e.target.value === 'promocion'); setPromoError(''); }}
+                  className="w-full bg-[#23232A] text-white border border-white/10 rounded-xl px-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#F400A1]">
+                  <option value="descuento">Descuento — con precio anterior</option>
+                  <option value="promocion">Promoción — sólo precio final</option>
+                </select>
+              </div>
               {/* Precio actual */}
-              <div className="flex items-center justify-between p-3 rounded-xl bg-[#0F0F12] border border-white/5">
-                <span className="text-sm text-gray-400">Precio base actual</span>
+              {!promoSinPrecioAnterior && <div className="flex items-center justify-between p-3 rounded-xl bg-[#0F0F12] border border-white/5">
+                <span className="text-sm text-gray-400">Precio anterior (base actual)</span>
                 <span className="font-bold text-white text-sm">
                   {Math.min(...(promoProduct.variantes_stock || []).filter(v => v.precio > 0).map(v => v.precio))
                     .toLocaleString('es-AR', { style: 'currency', currency: 'ARS' })}
                 </span>
-              </div>
+              </div>}
 
               {/* Input precio promo */}
               <div>
-                <label className="block text-sm font-medium text-gray-400 mb-2">
-                  Precio de oferta <span className="text-[#F400A1]">*</span>
+                <label htmlFor="promo-price" className="block text-sm font-medium text-gray-400 mb-2">
+                  Precio final <span className="text-[#F400A1]">*</span>
                 </label>
                 <div className="relative">
                   <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-bold text-sm">$</span>
                   <input
+                    id="promo-price"
                     type="number"
+                    disabled={promoStatus === 'saving'}
                     min="0"
                     step="0.01"
                     placeholder="Ingresá el precio promocional..."
@@ -954,7 +975,9 @@ export function ProductTable({ productos, categorias, tallesPorTipo }: ProductTa
                     className="w-full bg-[#23232A] text-white border border-white/10 rounded-xl pl-8 pr-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#F400A1] transition-shadow"
                   />
                 </div>
-                <p className="text-xs text-gray-600 mt-1.5">Debe ser menor al precio base. El precio original se verá tachado en la tienda.</p>
+                <p className="text-xs text-gray-400 mt-1.5">{promoSinPrecioAnterior
+                  ? 'Sólo se mostrará este precio con la etiqueta Promoción. No necesitás indicar un precio anterior.'
+                  : 'Debe ser menor al precio base de las variantes. Ese precio anterior se verá tachado, como hasta ahora.'}</p>
               </div>
 
               {promoError && (
@@ -964,7 +987,7 @@ export function ProductTable({ productos, categorias, tallesPorTipo }: ProductTa
               {promoProduct.precio_promocional && (
                 <div className="flex items-center gap-2 p-3 rounded-xl bg-[#F400A1]/5 border border-[#F400A1]/20 text-sm text-[#F400A1]">
                   <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2Zm1 13H11v-5h2v5Zm0-7H11V6h2v2Z"/></svg>
-                  Oferta activa: {Number(promoProduct.precio_promocional).toLocaleString('es-AR', { style: 'currency', currency: 'ARS' })}
+                  {promoProduct.promocion_sin_precio_anterior ? 'Promoción activa' : 'Descuento activo'}: {Number(promoProduct.precio_promocional).toLocaleString('es-AR', { style: 'currency', currency: 'ARS' })}
                 </div>
               )}
             </div>
@@ -977,7 +1000,7 @@ export function ProductTable({ productos, categorias, tallesPorTipo }: ProductTa
                     disabled={promoStatus === 'saving'}
                     className="text-sm font-semibold text-red-400 hover:text-red-300 transition-colors disabled:opacity-50"
                   >
-                    Quitar oferta
+                    Quitar {promoProduct.promocion_sin_precio_anterior ? 'promoción' : 'descuento'}
                   </button>
                 )}
               </div>
@@ -990,7 +1013,7 @@ export function ProductTable({ productos, categorias, tallesPorTipo }: ProductTa
                   disabled={promoStatus === 'saving' || !promoInput}
                   className="px-5 py-2.5 bg-[#F400A1] hover:bg-[#D000A0] text-white text-sm font-bold rounded-xl shadow-lg shadow-[#F400A1]/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {promoStatus === 'saving' ? 'Guardando...' : 'Aplicar oferta'}
+                  {promoStatus === 'saving' ? 'Guardando...' : promoSinPrecioAnterior ? 'Aplicar promoción' : 'Aplicar descuento'}
                 </button>
               </div>
             </div>
@@ -1045,6 +1068,7 @@ export function ProductTable({ productos, categorias, tallesPorTipo }: ProductTa
                   <option value="sin_talle">Sin Talle</option>
                   <option value="tops">Tops (85/90, etc.)</option>
                   <option value="estandar">Estándar (XS a 4XL)</option>
+                  <option value="ninos">Niño (6 a 16, XS, S)</option>
                 </select>
                 <p className="text-xs text-gray-500 mt-2">Cambiar el tipo de talle no modifica las variantes ya creadas, solo afecta las opciones disponibles al agregar nuevas variantes.</p>
               </div>

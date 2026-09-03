@@ -37,11 +37,14 @@ export async function actualizarProducto(productoId: string, datos: DatosProduct
   }
 }
 
-export async function setPromocion(productoId: string, precio_promocional: number): Promise<ApiResponse> {
+export async function setPromocion(productoId: string, precio_promocional: number, promocion_sin_precio_anterior = false): Promise<ApiResponse> {
+  if (!Number.isFinite(precio_promocional) || precio_promocional <= 0) {
+    return { status: 'error', message: 'Ingresá un precio válido mayor a 0.' };
+  }
   try {
     const { error } = await supabase
       .from('productos')
-      .update({ precio_promocional })
+      .update({ precio_promocional, promocion_sin_precio_anterior })
       .eq('id', productoId)
       .select('id')
       .single();
@@ -57,7 +60,7 @@ export async function clearPromocion(productoId: string): Promise<ApiResponse> {
   try {
     const { error } = await supabase
       .from('productos')
-      .update({ precio_promocional: null })
+      .update({ precio_promocional: null, promocion_sin_precio_anterior: false })
       .eq('id', productoId)
       .select('id')
       .single();

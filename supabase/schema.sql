@@ -61,7 +61,8 @@ CREATE TABLE public.productos (
     categoria_id uuid,
     genero public.genero_producto DEFAULT 'Unisex'::public.genero_producto NOT NULL,
     tipo_talle public.tipo_talle DEFAULT 'estandar'::public.tipo_talle NOT NULL,
-    precio_promocional numeric
+    precio_promocional numeric,
+    promocion_sin_precio_anterior boolean DEFAULT false NOT NULL
 );
 
 CREATE TABLE public.talles_por_tipo (

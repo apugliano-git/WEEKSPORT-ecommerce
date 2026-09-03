@@ -347,6 +347,7 @@ export default function NuevoArticuloPage() {
                     <option value="estandar">Estándar (XS a 4XL)</option>
                     <option value="unico">Único (Talle Único)</option>
                     <option value="tops">Tops (85/90 a 120+)</option>
+                    <option value="ninos">Niño (6 a 16, XS, S)</option>
                     <option value="sin_talle">Sin talle (Accesorios)</option>
                   </select>
                 </div>

@@ -3,6 +3,7 @@
 import React, { useState } from 'react'
 import { useCart } from '@/context/CartContext'
 import { procesarCheckoutWhatsApp } from '@/utils/whatsapp'
+import { cartItemSubtotal } from '@/utils/cartPricing'
 
 export function CartDrawer({ telefonoWhatsapp }: { telefonoWhatsapp: string }) {
   const { cart, isDrawerOpen, closeDrawer, removeItem, updateQuantity, totalPrice } = useCart()
@@ -66,6 +67,9 @@ export function CartDrawer({ telefonoWhatsapp }: { telefonoWhatsapp: string }) {
                     <h3 className="font-semibold text-sm line-clamp-2 text-white">{item.producto.nombre}</h3>
                     <p className="text-xs text-gray-400 mt-1">
                       {item.variante.talle} | {item.variante.color}
+                    </p>
+                    <p className="text-sm font-bold text-[#F400A1] mt-1">
+                      {cartItemSubtotal(item).toLocaleString('es-AR', { style: 'currency', currency: 'ARS' })}
                     </p>
                   </div>
                   

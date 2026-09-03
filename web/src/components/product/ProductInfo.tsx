@@ -88,14 +88,16 @@ export function ProductInfo({ producto }: ProductInfoProps) {
         {precioPromo ? (
           <div className="flex flex-col gap-1">
             <div className="flex items-center gap-2">
-              <span className="text-xs font-bold uppercase tracking-widest text-[#F400A1]/80 bg-[#F400A1]/10 px-2 py-0.5 rounded-full">Oferta</span>
+              <span className={`text-xs font-bold uppercase tracking-widest px-2 py-0.5 ${producto.promocion_sin_precio_anterior ? 'text-white bg-[#1A1A2E] border border-[#F400A1] rounded-md' : 'text-[#F400A1]/80 bg-[#F400A1]/10 rounded-full'}`}>
+                {producto.promocion_sin_precio_anterior ? 'Promoción' : 'Descuento'}
+              </span>
             </div>
             <span className="text-3xl md:text-4xl font-bold font-display text-[#F400A1]">
               {precioPromo.toLocaleString('es-AR', { style: 'currency', currency: 'ARS' })}
             </span>
-            <span className="text-base text-gray-500 line-through font-display">
+            {!producto.promocion_sin_precio_anterior && <span className="text-base text-gray-500 line-through font-display">
               {precioBase.toLocaleString('es-AR', { style: 'currency', currency: 'ARS' })}
-            </span>
+            </span>}
           </div>
         ) : (
           <span className="text-3xl md:text-4xl font-bold font-display text-[#F400A1]">

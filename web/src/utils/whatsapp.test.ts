@@ -29,6 +29,26 @@ const cart: CartItem[] = [{
 describe('procesarCheckoutWhatsApp', () => {
   afterEach(() => vi.unstubAllGlobals())
 
+  it.each([null, 0, -1, NaN, Infinity])('usa el precio base si no hay un precio promocional válido: %s', (precio) => {
+    let openedUrl = ''
+    vi.stubGlobal('window', { open: (url: string) => { openedUrl = url } })
+    procesarCheckoutWhatsApp('Ana', [{ ...cart[0], producto: { ...cart[0].producto, precio_promocional: precio } }], '5491155551234')
+    expect(new URL(openedUrl).searchParams.get('text')).toContain('Total estimado: $\u00a01.000,00')
+  })
+
+  it.each([false, true])('usa el precio final en subtotales y total (sin anterior: %s)', (sinAnterior) => {
+    let openedUrl = ''
+    vi.stubGlobal('window', { open: (url: string) => { openedUrl = url } })
+    procesarCheckoutWhatsApp('Ana', [
+      { ...cart[0], cantidad: 2, producto: { ...cart[0].producto, precio_promocional: 800, promocion_sin_precio_anterior: sinAnterior } },
+      { ...cart[0], producto: { ...cart[0].producto, nombre: 'Short' } },
+    ], '5491155551234')
+    const message = new URL(openedUrl).searchParams.get('text')!
+    expect(message).toContain('Remera (Talle: M, Color: Negro) x2 - $\u00a01.600,00')
+    expect(message).toContain('Short (Talle: M, Color: Negro) x1 - $\u00a01.000,00')
+    expect(message).toContain('Total estimado: $\u00a02.600,00')
+  })
+
   it('abre el checkout con el teléfono configurado normalizado', () => {
     let openedUrl = ''
     vi.stubGlobal('window', {

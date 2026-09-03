@@ -1,4 +1,5 @@
 import { CartItem } from '@/types'
+import { cartItemSubtotal } from './cartPricing'
 
 export const procesarCheckoutWhatsApp = (
   nombreCliente: string,
@@ -10,7 +11,7 @@ export const procesarCheckoutWhatsApp = (
   let totalPrice = 0;
 
   cart.forEach(item => {
-    const subtotal = item.variante.precio * item.cantidad;
+    const subtotal = cartItemSubtotal(item);
     totalPrice += subtotal;
     // Formatear precio para mejor legibilidad
     const formattedPrice = subtotal.toLocaleString('es-AR', { style: 'currency', currency: 'ARS' });
