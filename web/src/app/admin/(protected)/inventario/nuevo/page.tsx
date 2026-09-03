@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { crearArticuloCompleto, subirImagenProducto, obtenerTallesPorTipo } from '@/lib/inventarioService';
 import { createClient } from '@/lib/supabase/client';
-import { resetSizesAfterCreate } from '@/lib/inventoryForm';
+import { resetSizesAfterCreate, updateVariantQuantity, type StockByColor } from '@/lib/inventoryForm';
 
 // Normaliza un nombre de color: primera letra mayúscula, resto minúsculas
 function capitalizarColor(s: string): string {
@@ -29,7 +29,7 @@ export default function NuevoArticuloPage() {
   const [tipoTalle, setTipoTalle] = useState('estandar');
   const [precioInicial, setPrecioInicial] = useState<number | ''>('');
   const [tallesDisponibles, setTallesDisponibles] = useState<string[]>([]);
-  const [cantidadesPorTalle, setCantidadesPorTalle] = useState<Record<string, number>>({});
+  const [stockPorColor, setStockPorColor] = useState<StockByColor>({});
 
   useEffect(() => {
     let cancelled = false;
@@ -37,7 +37,7 @@ export default function NuevoArticuloPage() {
       const talles = await obtenerTallesPorTipo(tipoTalle);
       if (cancelled) return;
       setTallesDisponibles(talles);
-      setCantidadesPorTalle(Object.fromEntries(talles.map(talle => [talle, 0])));
+      setStockPorColor({});
     };
     void fetchTalles();
     return () => { cancelled = true; };
@@ -93,11 +93,13 @@ export default function NuevoArticuloPage() {
       return;
     }
     setColores(prev => [...prev, nombre]);
+    setStockPorColor(prev => ({ ...prev, [nombre]: {} }));
     setInputColor('');
     colorInputRef.current?.focus();
   };
 
   const eliminarColor = (idx: number) => {
+    setStockPorColor(prev => Object.fromEntries(Object.entries(prev).filter(([color]) => color !== colores[idx])));
     setColores(prev => prev.filter((_, i) => i !== idx));
   };
 
@@ -145,7 +147,7 @@ export default function NuevoArticuloPage() {
       precio_inicial: Number(precioInicial),
       imagenes: urlsImagenes,
       colores: colores.length > 0 ? colores : [],
-      cantidades: cantidadesPorTalle
+      cantidades: Object.fromEntries(coloresEfectivos.map(color => [color, stockPorColor[color] ?? {}]))
     };
 
     const result = await crearArticuloCompleto(payload);
@@ -159,7 +161,7 @@ export default function NuevoArticuloPage() {
       const resetSizes = resetSizesAfterCreate(tipoTalle, tallesDisponibles);
       setTipoTalle('estandar');
       setTallesDisponibles(resetSizes.sizes);
-      setCantidadesPorTalle(resetSizes.quantities);
+      setStockPorColor({});
       setPrecioInicial('');
       setArchivosImagenes([]);
       setColores([]);
@@ -341,7 +343,7 @@ export default function NuevoArticuloPage() {
                     onChange={(e) => {
                       setTipoTalle(e.target.value);
                       setTallesDisponibles([]);
-                      setCantidadesPorTalle({});
+                      setStockPorColor({});
                     }}
                   >
                     <option value="estandar">Estándar (XS a 4XL)</option>
@@ -377,28 +379,9 @@ export default function NuevoArticuloPage() {
                 Colores
               </h2>
               <p className="text-xs text-zinc-500 mb-4">
-                Ingresá el stock inicial de cada talle para el producto. Si agregás colores, este stock inicial será igual para cada color generado.
+                Agregá los colores y cargá las cantidades de cada uno por separado. Los talles sin stock quedan en 0.
               </p>
 
-              {tallesDisponibles.length > 0 && (
-                <div className="mb-6">
-                  <label className="block text-sm font-medium text-zinc-400 mb-3">Cantidades por Talle</label>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                    {tallesDisponibles.map(talle => (
-                      <div key={talle} className="flex items-center gap-2 bg-zinc-950 p-2 rounded-xl border border-zinc-800 focus-within:border-[#F400A1] focus-within:ring-1 focus-within:ring-[#F400A1] transition-colors">
-                        <label className="text-sm font-bold text-zinc-300 w-12 text-center shrink-0">{talle}</label>
-                        <input
-                          type="number"
-                          min="0"
-                          value={cantidadesPorTalle[talle] ?? 0}
-                          onChange={(e) => setCantidadesPorTalle(prev => ({ ...prev, [talle]: Number(e.target.value) || 0 }))}
-                          className="w-full bg-transparent outline-none text-white text-sm"
-                        />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
 
               {/* Input de color */}
               <div className="flex gap-2 mb-4 overflow-hidden">
@@ -446,6 +429,29 @@ export default function NuevoArticuloPage() {
               ) : (
                 <p className="text-xs text-zinc-600 italic mb-4">Sin colores — se creará sin especificar.</p>
               )}
+
+              {tallesDisponibles.length > 0 && coloresEfectivos.map(color => (
+                <fieldset key={color} className="mb-6">
+                  <legend className="block text-sm font-medium text-zinc-300 mb-3">Stock: {color}</legend>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-2 gap-3">
+                    {tallesDisponibles.map(talle => (
+                      <div key={talle} className="flex items-center gap-2 bg-zinc-950 p-2 rounded-xl border border-zinc-800 focus-within:border-[#F400A1] focus-within:ring-1 focus-within:ring-[#F400A1] transition-colors">
+                        <label className="text-sm font-bold text-zinc-300 w-12 text-center shrink-0">{talle}</label>
+                        <input
+                          type="number"
+                          min="0"
+                          max="2147483647"
+                          step="1"
+                          aria-label={`Stock ${color} talle ${talle}`}
+                          value={stockPorColor[color]?.[talle] ?? 0}
+                          onChange={(e) => setStockPorColor(prev => updateVariantQuantity(prev, color, talle, Number(e.target.value) || 0))}
+                          className="min-w-0 w-full bg-transparent outline-none text-white text-sm"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </fieldset>
+              ))}
 
               {/* Preview de variantes */}
               <div className="mt-2 p-3 bg-zinc-950/60 border border-zinc-800/40 rounded-xl">

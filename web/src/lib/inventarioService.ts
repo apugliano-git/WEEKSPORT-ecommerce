@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/client';
 import { parseProductCreationRpcResponse } from './security/inventoryRpc';
 import { validateImageUpload } from './security/uploads';
+import type { StockByColor } from './inventoryForm';
 
 const supabase = createClient();
 export interface ApiResponse {
@@ -17,7 +18,7 @@ export interface NuevoArticuloPayload {
   precio_inicial: number;
   imagenes?: string[];
   colores?: string[]; // Array de nombres de colores para generar variantes
-  cantidades?: Record<string, number>;
+  cantidades?: StockByColor;
 }
 
 /**
