@@ -3,6 +3,7 @@
 import React, { useState } from 'react'
 import { Producto } from '@/types'
 import { useCart } from '@/context/CartContext'
+import { ProductGallery } from './ProductGallery'
 
 interface ProductInfoProps {
   producto: Producto
@@ -65,8 +66,12 @@ export function ProductInfo({ producto }: ProductInfoProps) {
   }
 
   return (
-    <div className="flex flex-col text-white w-full max-w-lg md:max-w-xl mx-auto md:mx-0 overflow-hidden">
-      
+    <div className="grid grid-cols-1 md:grid-cols-2 md:grid-rows-[auto_1fr] gap-y-8 md:gap-y-12 md:gap-x-8 lg:gap-x-12 items-start text-white w-full">
+      <div className="min-w-0 md:col-start-1 md:row-start-1">
+        <ProductGallery imagenes={producto.imagenes} nombre={producto.nombre} />
+      </div>
+
+      <section aria-label="Información del producto" className="min-w-0 px-4 md:px-0 md:col-start-2 md:row-start-1 md:row-span-2">
       {/* Title & Badge */}
       <div className="flex flex-col gap-2">
         <div className="flex items-start justify-between gap-4">
@@ -106,9 +111,21 @@ export function ProductInfo({ producto }: ProductInfoProps) {
         )}
       </div>
 
+      {producto.descripcion && (
+        <div className="mt-6">
+          <h3 className="text-sm font-medium text-white/70 uppercase tracking-widest mb-3">
+            Descripción
+          </h3>
+          <div className="text-white/80 font-sans text-base leading-relaxed whitespace-pre-wrap break-words [overflow-wrap:anywhere] max-w-full">
+            {producto.descripcion}
+          </div>
+        </div>
+      )}
+      </section>
 
+      <section aria-label="Opciones de compra" className="min-w-0 px-4 pb-6 md:p-0 md:col-start-1 md:row-start-2">
       {/* Selectors */}
-      <div className="mt-8 flex flex-col gap-6">
+      <div className="flex flex-col gap-6">
         
         {/* Color */}
         {colores.length > 0 && (
@@ -221,16 +238,7 @@ export function ProductInfo({ producto }: ProductInfoProps) {
         {buttonText}
       </button>
 
-      {producto.descripcion && (
-        <div className="mt-10 md:mt-12">
-          <h3 className="text-sm font-medium text-white/70 uppercase tracking-widest mb-4">
-            Descripción
-          </h3>
-          <div className="text-white/80 font-sans text-base leading-relaxed whitespace-pre-wrap break-words [overflow-wrap:anywhere] max-w-full">
-            {producto.descripcion}
-          </div>
-        </div>
-      )}
+      </section>
     </div>
   )
 }
