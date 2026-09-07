@@ -25,3 +25,11 @@ export function deterministicProductOrder<T extends { id: string }>(products: T[
     return leftHash - rightHash || left.id.localeCompare(right.id)
   })
 }
+
+const buenosAiresDay = new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'America/Argentina/Buenos_Aires',
+})
+
+export function dailyProductOrder<T extends { id: string }>(products: T[], date = new Date()): T[] {
+  return deterministicProductOrder(products, buenosAiresDay.format(date))
+}

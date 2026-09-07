@@ -1,6 +1,6 @@
 import { StoreClient } from "@/components/catalog/StoreClient";
 import { createClient } from "@/lib/supabase/server";
-import { filterVisibleInStock, visibleVariants } from "@/lib/catalog/relatedProducts";
+import { dailyProductOrder, filterVisibleInStock } from "@/lib/catalog/relatedProducts";
 import { getSiteConfig } from "@/lib/siteConfig";
 import { Suspense } from "react";
 export const revalidate = 0; // Evitar caché estática para reflejar cambios en tiempo real
@@ -13,8 +13,7 @@ export default async function HomePage() {
     supabase
       .from('productos')
       .select('*, variantes_stock (*)')
-      .eq('activo', true)
-      .order('created_at', { ascending: false }),
+      .eq('activo', true),
   ]);
 
   const categorias = (categoriasData || []).map(cat => ({
@@ -26,10 +25,7 @@ export default async function HomePage() {
   const productosBrutos = productosData || [];
   
   // Filtrar variantes para mostrar solo las visibles en el catálogo público y excluir productos sin stock
-  const productos = filterVisibleInStock(productosBrutos).map(prod => ({
-    ...prod,
-    variantes_stock: visibleVariants(prod.variantes_stock),
-  }));
+  const productos = dailyProductOrder(filterVisibleInStock(productosBrutos));
 
   return (
     <main className="flex-1 w-full flex flex-col">
