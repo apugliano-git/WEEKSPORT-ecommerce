@@ -2,18 +2,19 @@ import { StoreClient } from "@/components/catalog/StoreClient";
 import { createClient } from "@/lib/supabase/server";
 import { dailyProductOrder, filterVisibleInStock } from "@/lib/catalog/relatedProducts";
 import { getSiteConfig } from "@/lib/siteConfig";
+import { readQuery } from "@/lib/supabase/readQuery";
 import { Suspense } from "react";
 export const revalidate = 0; // Evitar caché estática para reflejar cambios en tiempo real
 
 export default async function HomePage() {
   const supabase = await createClient();
-  const [config, { data: categoriasData }, { data: productosData }] = await Promise.all([
+  const [config, categoriasData, productosData] = await Promise.all([
     getSiteConfig(),
-    supabase.from('categorias').select('id, nombre, imagen_url'),
-    supabase
+    readQuery('categorias', () => supabase.from('categorias').select('id, nombre, imagen_url').retry(false)),
+    readQuery('productos', () => supabase
       .from('productos')
       .select('*, variantes_stock (*)')
-      .eq('activo', true),
+      .eq('activo', true).retry(false)),
   ]);
 
   const categorias = (categoriasData || []).map(cat => ({

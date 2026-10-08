@@ -1,12 +1,12 @@
 import { cache } from 'react'
+import { readQuery } from '@/lib/supabase/readQuery'
 import { createClient } from '@/lib/supabase/server'
 
 export const getSiteConfig = cache(async () => {
   const supabase = await createClient()
-  const { data } = await supabase
+  return readQuery('configuracion_sitio', () => supabase
     .from('configuracion_sitio')
     .select('*')
     .eq('id', 1)
-    .maybeSingle()
-  return data
+    .maybeSingle().retry(false))
 })
